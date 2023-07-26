@@ -2,3 +2,4 @@ gitignore/
 .DS_store
 ~.*
 .Rproj.user
+data/

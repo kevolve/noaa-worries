@@ -68,7 +68,7 @@ download_netcdf_files <- function(
 	
 	for(i in seq_along(years)) {
 		if(!(years[i] %in% years_avail)) {
-			cat(paste0("The year '",years[i],"' was not found in the database!"))
+			cat(paste0("The year '",years[i],"' was not found in the database!\n"))
 		} else {
 			ftp_files <- list_ftp_files(paste0(url,years[i],"/"))
 			closeAllConnections()
@@ -76,12 +76,20 @@ download_netcdf_files <- function(
 			if(!file.exists(paste0(output_path,measure))) stop("File path 'data/raw/netCDF' does not exist!\nCannot begin download!")
 			
 			output_file_dir <-  paste0(output_path,measure,"/",years[i],"/")
-			if(file.exists(output_file_dir)) dir.create(output_file_dir) # create the year's file if it doesn't exist already
+			if(!file.exists(output_file_dir)) dir.create(output_file_dir) # create the year's file if it doesn't exist already
+			output_file_paths <- paste0(output_file_dir, ftp_files)
 			
 			for(ii in seq_along(ftp_files)) {
+				if(file.exists(output_file_paths[ii])) {
+					cat(paste0("File '",ftp_files[ii],"' already exists; skipping...\n\n"))
+				} else {
+					cat(paste0("Downloading '",ftp_files[ii],"' (file ", ii, " of ", length(ftp_files), " for ",years[i],")... "))
+					curl::curl_download(url = paste0(url,years[i],"/",ftp_files), output_file_paths[ii])
+					# map2(urls, nc_files, curl::curl_download) # for downloading all in one fell swoop without live updating
+					cat("Complete!\n\n")
+				}
 				
 			}
-			output_file_path <- paste0(output_file_dir, ftp_files)
 			
 		}
 	}
