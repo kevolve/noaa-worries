@@ -11,15 +11,10 @@
 # # Create the required directories for saving (if they don't exist already):
 # dir.create("data") # run first time only
 # dir.create("data/raw") # run first time only
-# dir.create("data/raw/sst") # run first time only
-# dir.create("data/raw/GeoTiff") # run first time only
 
 require(tidyverse)
 require(purrr)
 require(RCurl) # for downloading from ftp server
-
-
-require(curl)
 library(ncdf4)
 library(raster)
 
@@ -28,33 +23,18 @@ library(raster)
 # Testing:
 output_path = "data/raw/"
 type = "daily"
-years = 1985
+years = 1985:2023 # all available years
 measure = "sst"
 
 
 download_netcdf_files <- function(
 		output_path = "data/raw/",
-		type = c("annual", "monthly", "daily", "climatology"),
+		type = c("annual", "monthly", "daily"),
 		years = 1985,
-		measure = c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date")) {
-
-	if(!file.exists(paste0(output_path,measure))) stop(paste0("File path '",paste0(output_path,measure),"' does not exist!\nCannot begin download!"))
-	if(!(measure %in% c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date"))) 
-		stop("Invalid measure! Try one of the following: baa baa-max-7d dhw hs sst ssta sst-trend-7d year-to-date_2022 year-to-date")
-	
-	base_path = "ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/"
-	
-	if(type == "climatology") {
-		end_path = "climatology/nc"
-	} else if (type %in% c("annual", "monthly", "daily")) {
-		end_path = paste0("nc/v1.0/", type, "/")
-	} else stop("Invalid type! Please use one of the following: annual, monthly, daily, climatology")
-	
-	# from: https://www.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/
-	# baa = bleaching alert area; sst = sea surface temperature; ssta = SST anomaly
-	# hs = hot spot; dhw = degree heating weeks
+		measure = c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology")) {
 	
 	list_ftp_files <- function(url) {
+		require(RCurl)
 		cat("Retrieving files...")
 		RCurl::getURL(url, ftp.use.epsv = FALSE, crlf = TRUE, dirlistonly = TRUE) %>% 
 			str_split(pattern="\n", simplify = TRUE) %>% 
@@ -62,49 +42,75 @@ download_netcdf_files <- function(
 			keep(str_detect(., "\\S"))
 	}
 	
-	url <- paste0(base_path, end_path, measure, "/")
-	years_avail <- list_ftp_files(url)
+	if(str_sub(output_path,-1,-1) != "/") output_path <- paste0(output_path, "/") # add a final slash if it doesn't have one
+	if(!file.exists(output_path)) stop(paste0("File path '",output_path,"' does not exist!\nCannot begin download!"))
+	if(!file.exists(paste0(output_path, measure))) dir.create(paste0(output_path, measure))
+	if(!(measure %in% c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology"))) 
+		stop("Invalid measure! Try one of the following: baa, baa-max-7d, cliatology, dhw, hs, sst, ssta, sst-trend-7d, year-to-date_2022, year-to-date")
 	
+	base_path = "ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/"
 	
-	for(i in seq_along(years)) {
-		if(!(years[i] %in% years_avail)) {
-			cat(paste0("The year '",years[i],"' was not found in the database!\n"))
-		} else {
-			ftp_files <- list_ftp_files(paste0(url,years[i],"/"))
-			closeAllConnections()
-			
-			if(!file.exists(paste0(output_path,measure))) stop("File path 'data/raw/netCDF' does not exist!\nCannot begin download!")
-			
-			output_file_dir <-  paste0(output_path,measure,"/",years[i],"/")
-			if(!file.exists(output_file_dir)) dir.create(output_file_dir) # create the year's file if it doesn't exist already
-			output_file_paths <- paste0(output_file_dir, ftp_files)
-			
-			for(ii in seq_along(ftp_files)) {
-				if(file.exists(output_file_paths[ii])) {
-					cat(paste0("File '",ftp_files[ii],"' already exists; skipping...\n\n"))
-				} else {
-					cat(paste0("Downloading '",ftp_files[ii],"' (file ", ii, " of ", length(ftp_files), " for ",years[i],")... "))
-					curl::curl_download(url = paste0(url,years[i],"/",ftp_files), output_file_paths[ii])
-					# map2(urls, nc_files, curl::curl_download) # for downloading all in one fell swoop without live updating
-					cat("Complete!\n\n")
-				}
+	if(measure == "climatology") {
+		end_path = "climatology/nc"
+		url <- paste0(base_path, end_path,"/")
+		ftp_files <- list_ftp_files(url)
+		output_file_paths <- paste0(output_path, measure,"/", ftp_files)
+		
+		# Download the paths
+		cat(paste0("\nDownloading ",length(ftp_files)," files..."))
+		map2(paste0(url, ftp_files), output_file_paths, curl::curl_download) # for downloading all in one fell swoop without live updating
+		cat("Complete!\n")
+		
+		
+	} else if (type %in% c("annual", "monthly", "daily")) {
+		end_path = paste0("nc/v1.0/", type, "/")
+		
+		
+		# from: https://www.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/
+		# baa = bleaching alert area; sst = sea surface temperature; ssta = SST anomaly
+		# hs = hot spot; dhw = degree heating weeks
+		
+		
+		
+		url <- paste0(base_path, end_path, measure, "/")
+		years_avail <- list_ftp_files(url)
+		
+		
+		for(i in seq_along(years)) {
+			if(!(years[i] %in% years_avail)) {
+				cat(paste0("The year '",years[i],"' was not found in the database!\n"))
+			} else {
+				ftp_files <- list_ftp_files(paste0(url,years[i],"/")) %>% 
+					str_subset(pattern = regex("nc$")) %>% # must end with .nc (ignore checksum files ending with .md5)
+					sort()
+				closeAllConnections()
+				cat("")
 				
+				if(!file.exists(paste0(output_path,measure))) stop("File path 'data/raw/netCDF' does not exist!\nCannot begin download!")
+				
+				output_file_dir <-  paste0(output_path,measure,"/",years[i],"/")
+				if(!file.exists(output_file_dir)) dir.create(output_file_dir) # create the year's file if it doesn't exist already
+				output_file_paths <- paste0(output_file_dir, ftp_files)
+				
+				# Loop across all files to download sequentially...
+				for(ii in seq_along(ftp_files)) {
+					if(file.exists(output_file_paths[ii])) {
+						cat(paste0("File '",ftp_files[ii],"' already exists; skipping...\n\n"))
+					} else {
+						cat(paste0("Downloading '",ftp_files[ii],"' (file ", ii, " of ", length(ftp_files), " for ",years[i],")... "))
+						curl::curl_download(url = paste0(url,years[i],"/",ftp_files), output_file_paths[ii])
+						cat("Complete!\n\n")
+						closeAllConnections()
+					}
+				}
 			}
-			
 		}
-	}
-	
-	
-	
-	
-	urls <- paste0(url, file_names) # use last value if already done once (36 is 2021)
-	nc_files  <- paste0(output_path,measure,file_names)
-	
-	RCurl::getURL(paste0(url,"./netCDF/",file_names), ftp.use.epsv = FALSE, crlf = TRUE, dirlistonly = TRUE)
-	
-	
-	map2(urls, nc_files, curl::curl_download)
+	} else stop("Invalid type! Please use one of the following: annual, monthly, daily, climatology")
 }
+
+# Usage:
+download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw", 
+					  type = "daily", years = 1985:2023, measure = "sst")
 
 
 file_names <- getURL(url, ftp.use.epsv = FALSE, crlf = TRUE, dirlistonly = TRUE)
