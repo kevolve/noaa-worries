@@ -1,4 +1,4 @@
-# No worries getting sea temperature data with *noaa-worries*!
+# NO(AA) worries getting sea temperature data!
 **A repo to help with downloading and processing NOAA temperature data**
 
 This repo is *currently under development* but will include helpful scripts and functions for downloading and summarising overnight temperature data from NOAA's CoralTemp FTP server. 
