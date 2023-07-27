@@ -86,16 +86,21 @@ download_netcdf_files <- function(
 				closeAllConnections()
 				cat("\n")
 				
-				if(!file.exists(paste0(output_path,measure))) stop("File path '",paste0(output_path,measure),"' does not exist!\nCannot begin download!")
+				if(!file.exists(paste0(output_path,"/",measure))) stop("File path '",paste0(output_path,measure),"' does not exist!\nCannot begin download!")
 				
 				output_file_dir <-  paste0(output_path,measure,"/",years[i],"/")
 				if(!file.exists(output_file_dir)) dir.create(output_file_dir) # create the year's file if it doesn't exist already
+				existing_files <- list.files(path = output_file_dir)
+				ftp_files <- ftp_files[!(ftp_files %in% existing_files)]
 				output_file_paths <- paste0(output_file_dir, ftp_files)
+				input_urls <- paste0(url,years[i],"/",ftp_files)
 				
 				# Download all files using curl's multi_download (in parallel; allows for resuming of large files)
-				cat(paste0("Starting year ",years[i], " download... (",length(ftp_files)," files)"))
+				cat(paste0("Starting year ",years[i], " download... (",length(ftp_files)," files)\n")) # line not working for some reason?
+				# cat(paste0("Starting year download...\n")) # line not working for some reason?
 				start_tm = Sys.time() # record start time
-				curl::multi_download(urls = paste0(url,years,"/",ftp_files), output_file_paths)
+				x <- curl::multi_download(urls = input_urls, destfiles = output_file_paths)
+				if(any(x$error != "")) {paste0(length(x$error[x$error != ""]), " files failed to download with the error(s):\n", x$error[x$error != ""],collapse = "\n")}
 				runtime = round(as.numeric(difftime(Sys.time(), start_tm, units = "mins")),2) # record run time
 				cat(paste0("Download complete in ",runtime," mins!\n\n"))
 				closeAllConnections()
@@ -120,9 +125,9 @@ download_netcdf_files <- function(
 
 # Usage:
 download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw", 
-					  type = "daily", years = 1989:2023, measure = "sst")
-14*35/60 # about 8 hours to complete!
-
+					  type = "daily", years = 1997, measure = "sst")
+14*length(1989:2023)/60 # ~8 hours to complete! (9.1 hours for full library)
+# Note that cancelling in the middle will delete the current year's files (stored in RAM)
 
 finish = Sys.time()
 (runtime=(finish - start))
