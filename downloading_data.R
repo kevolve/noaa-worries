@@ -21,9 +21,9 @@ library(raster)
 
 
 # Testing:
-output_path = "data/raw/"
+output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw"
 type = "daily"
-years = 1985:2023 # all available years
+years = 1988:2023 # all available years
 measure = "sst"
 
 
@@ -84,33 +84,49 @@ download_netcdf_files <- function(
 					str_subset(pattern = regex("nc$")) %>% # must end with .nc (ignore checksum files ending with .md5)
 					sort()
 				closeAllConnections()
-				cat("")
+				cat("\n")
 				
-				if(!file.exists(paste0(output_path,measure))) stop("File path 'data/raw/netCDF' does not exist!\nCannot begin download!")
+				if(!file.exists(paste0(output_path,measure))) stop("File path '",paste0(output_path,measure),"' does not exist!\nCannot begin download!")
 				
 				output_file_dir <-  paste0(output_path,measure,"/",years[i],"/")
 				if(!file.exists(output_file_dir)) dir.create(output_file_dir) # create the year's file if it doesn't exist already
 				output_file_paths <- paste0(output_file_dir, ftp_files)
 				
-				# Loop across all files to download sequentially...
-				for(ii in seq_along(ftp_files)) {
-					if(file.exists(output_file_paths[ii])) {
-						cat(paste0("File '",ftp_files[ii],"' already exists; skipping...\n\n"))
-					} else {
-						cat(paste0("Downloading '",ftp_files[ii],"' (file ", ii, " of ", length(ftp_files), " for ",years[i],")... "))
-						curl::curl_download(url = paste0(url,years[i],"/",ftp_files), output_file_paths[ii])
-						cat("Complete!\n\n")
-						closeAllConnections()
-					}
-				}
+				# Download all files using curl's multi_download (in parallel; allows for resuming of large files)
+				cat(paste0("Starting year ",years[i], " download... (",length(ftp_files)," files)"))
+				start_tm = Sys.time() # record start time
+				curl::multi_download(urls = paste0(url,years,"/",ftp_files), output_file_paths)
+				runtime = round(as.numeric(difftime(Sys.time(), start_tm, units = "mins")),2) # record run time
+				cat(paste0("Download complete in ",runtime," mins!\n\n"))
+				closeAllConnections()
+				
+				# # Loop across files to download sequentially (slower)...
+				# for(ii in seq_along(ftp_files)) {
+				# 	if(file.exists(output_file_paths[ii])) {
+				# 		cat(paste0("File '",ftp_files[ii],"' already exists; skipping...\n\n"))
+				# 	} else {
+				# 		cat(paste0("Downloading '",ftp_files[ii],"' (file ", ii, " of ", length(ftp_files), " for ",years[i],")... "))
+				# 		curl::curl_download(url = paste0(url,years[i],"/",ftp_files), output_file_paths[ii])
+				# 		cat("Complete!\n\n")
+				# 		closeAllConnections()
+				# 	}
+				# }
 			}
 		}
 	} else stop("Invalid type! Please use one of the following: annual, monthly, daily, climatology")
 }
 
+
+
 # Usage:
 download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw", 
-					  type = "daily", years = 1985:2023, measure = "sst")
+					  type = "daily", years = 1989:2023, measure = "sst")
+14*35/60 # about 8 hours to complete!
+
+
+finish = Sys.time()
+(runtime=(finish - start))
+
 
 
 file_names <- getURL(url, ftp.use.epsv = FALSE, crlf = TRUE, dirlistonly = TRUE)
