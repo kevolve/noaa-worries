@@ -30,7 +30,7 @@ measure = "sst"
 download_netcdf_files <- function(
 		output_path = "data/raw/",
 		type = c("annual", "monthly", "daily"),
-		years = 1985,
+		years = 2023,
 		measure = c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology")) {
 	
 	list_ftp_files <- function(url) {
@@ -131,86 +131,9 @@ download_netcdf_files <- function(
 
 # Usage:
 download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw", 
-					  type = "daily", years = 1989:2023, measure = "sst")
-14*length(1985:2023)/60 # ~9 hours for daily SST records
+					  type = "daily", years = 1985:2023, measure = "sst")
+14*length(1985:2023)/60 # with good internet connection ~14mins per year (365 files), so ~9hr for all files
 
 # IF you see that some of the years had errors in downloading the files, 
 # try again by re-running the above function - it will scan for files
 # that already exist and skip them.
-
-
-file_names <- getURL(url, ftp.use.epsv = FALSE, crlf = TRUE, dirlistonly = TRUE)
-file_names <- strsplit(file_names, "\r*\n") %>% unlist() %>%
-	str_match("ct5km_dhw-max_v3.1.*\\.nc$") %>%
-	na.omit() %>% as.vector()
-file_names # list all file names to access across the FTP server
-urls <- paste0(url, file_names)[c(1,36)] # use last value if already done once (36 is 2021)
-nc_files  <- paste0("./netCDF/",file_names)[c(1,36)]
-
-
-## Download the files:
-tic()
-map2(urls, nc_files, curl::curl_download)
-toc() # takes 8+ minutes for full download
-# Note: The CRS for 2020 and more recent years is different from 2019 previous
-
-#### Convert and save all netCDF files as GeoTiffs ####
-
-nc_to_geotiff <- function(file_path, crs_to_use="+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs") {
-	require(tictoc); tic()
-	
-	base_file <- basename(file_path)
-	nc_open(file_path)
-	r <- raster("netCDF/ct5km_dhw-max_v3.1_1986.nc", varname = "degree_heating_week")
-	names(r) <- "dhw"
-	crs(r) <- crs_to_use
-	
-	writeRaster(r,
-				filename=paste0("./GeoTiff/",
-								stringr::str_replace(base_file, ".nc$", ".tif")),
-				format="GTiff",
-				overwrite=TRUE)
-	toc()
-	paste("Successfully converted", base_file)
-}
-
-
-## Apply conversion function:
-nc_files <- list.files("./netCDF/", pattern = ".nc$") %>%
-	paste0("./netCDF/",.)
-# raster(nc_files[1])
-
-tic()
-nc_files %>% # change to final value to speed up!
-	purrr::map(~nc_to_geotiff(.x))
-toc() # Takes a little over 10 minutes for all files if running slow
-
-
-#### Re-save geotiff as a raster stack ####
-
-gt_files <- list.files("./GeoTiff/", pattern = ".tif$") %>%
-	paste0("./GeoTiff/",.)
-gt1 <- raster(gt_files[1])
-gt2 <- raster(gt_files[2])
-crs(gt1, asText=TRUE)
-crs(gt2, asText=TRUE)
-## Create a raster stack of all GeoTiffs:
-s <- gt_files %>%
-	# as.list() %>%
-	purrr::map(raster) %>%
-	raster::stack()
-
-## Save raster stack and close shop
-s <- stackSave(s, "dhw_stack_globe.stk")
-rm(list=ls()); removeTmpFiles(h=0)
-
-
-## Open and set up stack for use:
-s <- stackOpen("dhw_stack_globe.stk")
-names(s) <- 
-	paste0("DHW_",str_extract(names(s), "(?<=ct5km_dhw.max_v3.1_).*"))
-
-## Plot each raster:
-plot(s[[1:16]])
-plot(s[[17:32]])
-plot(s[[33:36]])
