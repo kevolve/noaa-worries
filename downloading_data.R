@@ -20,11 +20,11 @@ library(raster)
 
 
 
-# Testing:
-output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw"
-type = "daily"
-years = 1988:2023 # all available years
-measure = "sst"
+# # Testing:
+# output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw"
+# type = "daily"
+# years = 1988:2023 # all available years
+# measure = "sst"
 
 
 download_netcdf_files <- function(
@@ -132,7 +132,7 @@ download_netcdf_files <- function(
 
 # Usage:
 download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw", 
-					  years = 1985:2023, type = "daily", measure = "sst")
+					  years = 1985:1988, type = "daily", measure = "sst")
 14*length(1985:2023)/60 # with good internet connection ~14mins per year (365 files), so ~9hr for all files
 
 # IF you see that some of the years had errors in downloading the files, 
