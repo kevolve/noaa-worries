@@ -1,6 +1,7 @@
 require(tidyverse)
 require(sf)
 require(raster)
+require(data.table)
 
 # Load a shape file with coordinates for use:
 gbr_reefs <- read_sf("data/gbr_reef_coords/gbr_reefs.shp")
@@ -60,41 +61,57 @@ for(i in seq_along(years)){
 	
 }
 out <- data.table::rbindlist(out_i)
-round(as.numeric(difftime(Sys.time(), start_tm, units = "mins")),2) # final run time
 
 # Save files:
-write.csv(out, file = "data/daily_sst_across_gbr_reefs.csv", row.names = FALSE)
+# write.csv(out, file = "data/daily_sst_across_gbr_reefs.csv", row.names = FALSE)
 # Run time variable; 5-20 mins/yr dependent on system memory available!
 
 
-# Merge files when there's multiple large files:
-files_to_merge <- list.files("data") %>%
-	str_subset(regex("daily_sst_across_gbr_reefs.*.csv"))
-
-out_i <- vector(mode = "list", length = length(files_to_merge))
-for(i in seq_along(files_to_merge)) {
-	out_i[[i]] <- read.csv(file = paste0("data/",files_to_merge[i]))
-}
-sst_data <- data.table::rbindlist(out_i) %>% arrange(date, reef_index)
-write.csv(sst_data, file = "data/sst_data__daily_across_gbr_reefs.csv", row.names = FALSE)
-save(sst_data, file = "data/sst_data__daily_across_gbr_reefs.RData")
+# # Merge files when there's multiple large files:
+# files_to_merge <- list.files("data") %>%
+# 	str_subset(regex("daily_sst_across_gbr_reefs.*.csv"))
+# 
+# out_i <- vector(mode = "list", length = length(files_to_merge))
+# for(i in seq_along(files_to_merge)) {
+# 	out_i[[i]] <- read.csv(file = paste0("data/",files_to_merge[i]))
+# }
+# sst_data <- data.table::rbindlist(out_i) %>% arrange(date, reef_index)
+# # write.csv(sst_data, file = "data/sst_data__daily_across_gbr_reefs.csv", row.names = FALSE)
+# save(sst_data, file = "data/sst_data__daily_across_gbr_reefs.RData")
 
 
 # # Where it fails, delete incorrect files and re-run download:
 # download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw",
 # 					  years = 2023, type = "daily", measure = "sst")
 
-# Load the file (if closed after finishing)
-sst_data <- read.csv(file = "data/daily_sst_across_gbr_reefs.csv")
 
-out %>% 
-	filter(reef_index %in% 1:20) %>% 
+# Load the file (if closed after finishing):
+load("data/sst_data__daily_across_gbr_reefs.RData") # load sst_data object (~20 secs)
+
+gbr_reefs2 <- gbr_reefs %>%
+	dplyr::select(ref_ndx, gbr_nm_x, ams_sct) %>%
+	st_drop_geometry() %>%
+	rename(reef_index = ref_ndx, reef_name = gbr_nm_x, aims_sector = ams_sct) %>%
+	full_join(sst_data, by = join_by(reef_index))
+
+# gbr_reefs3 <- gbr_reefs2 %>% 
+# 	# filter(reef_index %in% 1:20) %>% 
+# 	group_by(reef_index, reef_name, aims_sector, date) %>%
+# 	summarise(mean_sst = mean(sst)) # VERY SLOW!!
+
+# Use data.table operations to summarise??
+setDT(gbr_reefs2)
+my_summary = function(x) list(mean = mean(x, na.rm = T),
+							  sd = sd(x, na.rm = T))
+gbr_reefs3 <- 
+	gbr_reefs2[, unlist(lapply(.SD, my_summary), recursive = FALSE),
+	  by = .(reef_index, reef_name, aims_sector, date),
+	  .SDcols = c('sst')]
+	
+gbr_reefs3 %>%
 	mutate(date = as.Date(date)) %>%
-	ggplot(aes(x = date, y = sst)) +
-	geom_line(show.legend = FALSE, aes(color = factor(reef_index))) +
-	geom_vline(xintercept = as.Date("1985-01-01"), color = "black", linetype = "dashed") +
-	geom_vline(xintercept = as.Date("1988-01-01"), color = "black", linetype = "dashed")
-# Clearly there is an area where 1885 = 1988?
+	ggplot(aes(x = date, y = mean_sst)) +
+	geom_line(show.legend = TRUE, aes(color = factor(aims_sector)))
 
 # #### Extracting for only a single file ####
 # base_file_path <- "/Users/uqkbairo/MODRRAP/storage1tb/data/raw/sst/"
