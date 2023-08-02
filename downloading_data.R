@@ -29,9 +29,10 @@ measure = "sst"
 
 download_netcdf_files <- function(
 		output_path = "data/raw/",
-		type = c("annual", "monthly", "daily"),
 		years = 2023,
-		measure = c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology")) {
+		type = "daily", # c("annual", "monthly", "daily"),
+		measure = "sst") #c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology")) { 
+	{ 
 	
 	list_ftp_files <- function(url) {
 		require(RCurl)
@@ -131,7 +132,7 @@ download_netcdf_files <- function(
 
 # Usage:
 download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw", 
-					  type = "daily", years = 1985:2023, measure = "sst")
+					  years = 1985:2023, type = "daily", measure = "sst")
 14*length(1985:2023)/60 # with good internet connection ~14mins per year (365 files), so ~9hr for all files
 
 # IF you see that some of the years had errors in downloading the files, 

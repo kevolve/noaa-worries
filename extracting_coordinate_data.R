@@ -1,68 +1,116 @@
 require(tidyverse)
 require(sf)
+require(raster)
 
 # Load a shape file with coordinates for use:
 gbr_reefs <- read_sf("data/gbr_reef_coords/gbr_reefs.shp")
+moore <- gbr_reefs %>% filter(gbr_nm_x == "Moore Reef") # try with a single reef for now
 
-# If the data have coordinates based on (multi)polygons, 
-# You'll need to convert to centroids for use with this script (reefs fall within 5km area, usually)
-
-
-length(unique(gbr_reef_polygons_2023$unique_id))
-length(unique(gbr_reefs$unique_id))
-nrow(gbr_reefs)
-anti_join(gbr_reef_polygons_2023, gbr_reefs)
-
-nrow(left_join(gbr_reef_polygons_2023, shape, by = join_by(gbr_name, unique_id)) %>% filter(!is.na(priority_lb)))
-nrow(inner_join(gbr_reef_polygons_2023, shape, by = join_by(unique_id)))
-nrow(inner_join(gbr_reef_polygons_2023, shape, by = join_by(gbr_name)))
-
-
-crs(gbr_reefs)
-
-# Check to see centroids match up!
-# sf_use_s2(FALSE) # need to turn off spherical geometry for it to work
-# gbr_reefs[c("lon_b", "lat_b")] <- sf::st_centroid(gbr_reefs) %>% st_coordinates() 
-# gbr_reefs %>% mutate(lon_diff = lon-lon_b, lat_diff = lat-lat_b) %>% dplyr::select(ends_with("diff")) # all lines up!
-# st_is_valid(gbr_reefs) %>% any()# looks good!
-View(x)
-x %>% filter(gbr_name == "Moore Reef")
+# Note that single long-lat coordinates for each reef are required! Not polygons!
+# So use st_centroid() to convert to single coordinates if required!
 
 
 base_file_path <- "/Users/uqkbairo/MODRRAP/storage1tb/data/raw/sst/"
 years <- 2014
-i <- 1
-ii <- 1
+
 nc_files <- list.files(paste0(base_file_path, years[i], "/"))
 file_path <- paste0(base_file_path, years[i], "/",nc_files[ii])
-(nc <- nc_open(file_path))
 r <- raster::raster(file_path, varname = "analysed_sst")
+
+extracted_sst <- 
+	gbr_reefs %>%
+	st_drop_geometry() %>% # drop polygons...
+	st_as_sf(coords = c("lon","lat")) %>% # just use centroids...
+	raster::extract(r, .)
+
+(na_i <- which(is.na(extracted_sst))) # there are 5 locations producing NAs! 
+# Will ignore for now...
+
+# Overwrite without NA value locations (n=5) or can modify lat-lon to include grids with less land mass that would have SST!
+gbr_reefs <- gbr_reefs[-na_i,]
+
+
+#### Looping through all files ####
+
+# Now loop through SST and save values through time, based on unique reef ID and date:
+base_file_path <- "/Users/uqkbairo/MODRRAP/storage1tb/data/raw/sst/"
+years <- 2003:2023
+i <- 1
+ii <- 1
+target <- gbr_reefs
+
+
+
+target_reefs <- target %>%
+	st_drop_geometry() %>% # drop polygons...
+	st_as_sf(coords = c("lon","lat")) # set specific coordinates to extract for...
+
+# Could also try it with polygons, but missing 140 reefs...
+# would then use:
+# out_ii[[ii]] <- raster::extract(r, target_reefs, method = "bilinear", exact = TRUE)
+
+# Looping code:
+out_i <- vector(mode = "list", length = length(years))
+start_tm = Sys.time() # record start time
+cat("Starting SST extraction...\n")
+for(i in seq_along(years)){
+	year_tm = Sys.time() # record start time
+	cat(paste0("\nStarting SST extractions for year ", years[[i]],"...\n"))
+	
+	nc_files <- list.files(paste0(base_file_path, years[i], "/")) %>% sort()
+	out_ii <- vector(mode = "list", length = length(nc_files))
+	dates <- nc_files %>%
+		str_match(., regex("^coraltemp_v3.1_(.*).nc")) %>% {.[,-1]} %>%
+		str_match(., regex("(\\d{4})(\\d{2})(\\d{2})")) %>% {.[,-1]} %>%
+		`colnames<-`(c("d1", "d2", "d3")) %>%
+		as.tibble() %>%
+		mutate(date = paste0(d1,"-",d2,"-",d3)) %>% 
+		pull(date)
+	
+	for(ii in seq_along(nc_files)){
+		file_path <- paste0(base_file_path, years[i], "/",nc_files[ii])
+		r <- raster::raster(file_path, varname = "analysed_sst")
+		out_ii[[ii]] <- raster::extract(r, target_reefs) %>%
+			tibble(reef_index = target_reefs$ref_ndx, date = dates[ii], sst = .)
+		if(ii %% 5 == 0 | ii == 1){cat(paste0("\nCompleted ", dates[[ii]], "... "))} else {cat(paste0(dates[[ii]],"... "))}
+	}
+	out_i[[i]] <- data.table::rbindlist(out_ii)
+	runtime1 = round(as.numeric(difftime(Sys.time(), year_tm, units = "mins")),2) # record run time
+	runtime2 = round(as.numeric(difftime(Sys.time(), start_tm, units = "mins")),2) # record run time
+	
+	cat(paste0("Year ", years[[i]]," extractions complete in ", runtime1," mins! (total runtime: ", runtime2," mins)\n\n"))
+	
+}
+out <- data.table::rbindlist(out_i)
+round(as.numeric(difftime(Sys.time(), start_tm, units = "mins")),2) # final run time
+
+# Save files:
+write.csv(out, file = "data/daily_sst_across_gbr_reefs.csv", row.names = FALSE)
+# Approx 20 mins per year with 16GB RAM, so:
+20*length(1985:2023)/60 # ~13 hours to run to completion!
+
+
+
+# Where it fails, delete incorrect files and re-run download:
+download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw", 
+					  years = 2003, type = "daily", measure = "sst")
+
+
+
+
+
+r <- raster::raster(file_path, varname = "analysed_sst")
+
+extracted_sst <- 
+	gbr_reefs %>%
+	st_drop_geometry() %>% # drop polygons...
+	st_as_sf(coords = c("lon","lat")) %>% # just use centroids...
+	raster::extract(r, .)
+
+# (nc <- nc_open(file_path))
 # var_names <- purrr::map(1:nc$nvars, function(x){nc$var[[x]]$name}) %>% unlist()
 # print(paste("This file has",nc$nvars,"variables:", paste0(var_names, collapse = ", ")))
-nc_lon_max <- ncatt_get(nc, "lon")[["valid_max"]]
-nc_lon_min <- ncatt_get(nc, "lon")[["valid_min"]]
-nc_lat_max <- ncatt_get(nc, "lat")[["valid_max"]]
-nc_lat_min <- ncatt_get(nc, "lat")[["valid_min"]]
 
-
-
-
-
-r_lat <- seq()
-ncatt_get(nc, "dim")
-# Load as raster:
-dim(r) # 3600 long
-
-
-point_series <- extract(r_brick, SpatialPoints(cbind(point_lon,point_lat)))
-
-
-
-
-
-names(gbr_polygons)
-names(reef_ids)
-str(gbr_polygons)
 
 
 require(sf)
