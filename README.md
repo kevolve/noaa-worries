@@ -1,8 +1,9 @@
-# NO(AA) worries getting sea temperature data!
-**A repo to help with downloading and processing NOAA temperature data**
+# NO(AA) more worries getting sea temperature data!
+**A repo to help with downloading and processing NOAA temperature data from their FTP server**
 
-This repo is *currently under development* but will include helpful scripts and functions for downloading and summarising overnight temperature data from NOAA's CoralTemp FTP server. 
-Download NOAA data products such as:
+This repo is actively *under development* but includes helpful scripts and functions for downloading and summarising nighttime sea surface temperature data from NOAA's CoralTemp FTP server.
+
+Get NOAA data products such as:
 * Nighttime sea surface temperatures (SST; *sst*)
 * Past year-to-date temperatures (for 2022; *year-to-date_2022*) and current year-to-date temperatures (for 2023; *year-to-date*)
 * SST anomalies (*ssta*)
@@ -12,8 +13,9 @@ Download NOAA data products such as:
 * Daily hot spot (°C above MMM; *hs*)
 * Degree heating weeks (DHW - the cumulative hot spot temperatures across 3 months exceeding MMM+1°C; *dhw*)
 
-It (hopefully) will include the following features:
-* Download NetCDF files to a specified output location
-* Convert NetCDF files to GeoTiffs
-* Summarise Degree Heating Weeks across time for given locations
-* Interpolate temperatures when reefs occur across multiple 5km grid cells
+It includes the following scripts:
+* Download complete NetCDF files for the above NOAA data products to a specified output location
+* Extract SSTs from downloaded NetCDF files using site coordinates
+* Mannually re-compute NOAA products such as Degree Heating Weeks for specific locations
+
+If you are interested in a feature or function, feel free to submit a feature request via 'Issues'
