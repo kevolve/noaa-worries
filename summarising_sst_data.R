@@ -24,7 +24,8 @@ moore_data <- filter(sst_data, reef_index == moore_index) %>%
 	   .after = date) %>%
 	mutate(sst_6w_mean = data.table::frollmean(sst, n=7*6, align = "center")) %>%
 	group_by(year) %>%
-	mutate(mean_sst = round(mean(sst),1)) %>% ungroup()
+	mutate(mean_sst = mean(sst),1,
+		   mean_sst_txt = format(round(mean_sst, 1), nsmall = 1)) %>% ungroup()
 
 
 #### Plotting the SST data ####
@@ -37,21 +38,22 @@ moore_data <- filter(sst_data, reef_index == moore_index) %>%
 				 expand = expansion(add=c(0,0))) +
 	scale_color_gradientn(colours = c('#303890', '#516aad', '#729dc8', '#9ed2df', '#dbe3c5', '#fec2b1', '#f58684', '#df4759', '#b30034')) +
 	labs(x = NULL, y = "Sea surface temperature\n(rolling 6-week mean °C)",
-		 color = "Temperature (°C)",
-		 title = "Moore Reef, near Cairns, QLD") )
+		 color = "Mean annual SST (°C)",
+		 title = "Moore Reef (Cairns, Australia)") )
 
 # Create an animated version of the plot
 require(gganimate)
 animate(p1 + transition_reveal(index) +
 			guides(color = "none") +
-			labs(subtitle = "Year {moore_data$year[which(moore_data$index == frame_along)]} - Mean SST: {moore_data$mean_sst[which(moore_data$index == frame_along)]}°C"), 
+			theme(plot.subtitle=element_text(hjust=0.5)) +
+			labs(subtitle = "Year {moore_data$year[which(moore_data$index == frame_along)]} - Mean SST: {moore_data$mean_sst_txt[which(moore_data$index == frame_along)]}°C"), 
 		width = 4.5, height = 3, units =  "in",
 		res = 300,
 		nframes=300,
 		duration = 7,
 		renderer = gifski_renderer(),
 		end_pause = 10,
-		bg = "transparent")
+		bg="white")
 anim_save("plots/moore_reef_temp_animated.gif")
 
 #### Calculating DHWs ####
