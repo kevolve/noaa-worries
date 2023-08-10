@@ -18,34 +18,44 @@ moore_data <- filter(sst_data, reef_index == moore_index) %>%
 	arrange(date) %>% 
 	mutate(year = year(date),
 	   no_year_date = as.Date(paste0("2000-",month(date), "-", day(date))),
-	   date_plus7m = date %m+% months(7),
-	   annum = lubridate::year(date_plus7m), 
+	   # date_plus7m = date %m+% months(7),
+	   # annum = lubridate::year(date_plus7m), 
 	   index = 1:n(),
 	   .after = date) %>%
-	mutate(sst_5mean = data.table::frollmean(sst, n=7*6, align = "center"))
+	mutate(sst_6w_mean = data.table::frollmean(sst, n=7*6, align = "center")) %>%
+	group_by(year) %>%
+	mutate(mean_sst = round(mean(sst),1)) %>% ungroup()
 
 
 #### Plotting the SST data ####
 
 # Create simple plot of all years
 (p1 <- moore_data %>% 
-	ggplot(aes(x = no_year_date, y = sst_5mean)) +
-	geom_line(aes(color = year, group = year)) +
+	ggplot(aes(x = no_year_date, y = sst_6w_mean)) +
+	geom_line(aes(color = mean_sst, group = year)) +
 	scale_x_date(labels = scales::date_format("%b"), date_breaks = "month",
 				 expand = expansion(add=c(0,0))) +
 	scale_color_gradientn(colours = c('#303890', '#516aad', '#729dc8', '#9ed2df', '#dbe3c5', '#fec2b1', '#f58684', '#df4759', '#b30034')) +
 	labs(x = NULL, y = "Sea surface temperature\n(rolling 6-week mean °C)",
+		 color = "Temperature (°C)",
 		 title = "Moore Reef, near Cairns, QLD") )
 
 # Create an animated version of the plot
 require(gganimate)
-animate(p1 + transition_reveal(index), 
+animate(p1 + transition_reveal(index) +
+			guides(color = "none") +
+			labs(subtitle = "Year {moore_data$year[which(moore_data$index == frame_along)]} - Mean SST: {moore_data$mean_sst[which(moore_data$index == frame_along)]}°C"), 
 		width = 4.5, height = 3, units =  "in",
 		res = 300,
 		nframes=300,
+		duration = 7,
 		renderer = gifski_renderer(),
+		end_pause = 10,
 		bg = "transparent")
-anim_save("plots/moore_reef_yearly_temp_animated.gif")
+anim_save("plots/moore_reef_temp_animated.gif")
+
+#### Calculating DHWs ####
+
 
 
 #### Summarising the data (computationally expensive!!) ####
