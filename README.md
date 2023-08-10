@@ -1,7 +1,10 @@
 # Need sea surface temperature data? NO(AA) worries!
 **A repo to help with downloading and processing NOAA temperature data from their FTP server**
 
-This repo is actively *under development* but includes helpful scripts and functions for downloading and summarising nighttime sea surface temperature data from NOAA's CoralTemp FTP server.
+<img src="plots/moore_reef_temp_animated.gif" alt="moore_reef_sst" width="500"/>
+
+
+This repo is *under active development* but includes helpful scripts and functions for downloading and summarising nighttime sea surface temperature data from NOAA's CoralTemp FTP server.
 
 Get NOAA data products such as:
 * Nighttime sea surface temperatures (SST; *sst*)
@@ -18,4 +21,4 @@ It includes the following scripts:
 * Extract SSTs from downloaded NetCDF files using site coordinates
 * Mannually re-compute NOAA products such as Degree Heating Weeks for specific locations
 
-If you are interested in a feature or function, feel free to submit a feature request via 'Issues'
+If you are interested in a feature or function, feel free to submit a feature request via 'Issues'!
