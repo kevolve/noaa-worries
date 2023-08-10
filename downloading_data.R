@@ -1,6 +1,6 @@
 #### Downloading netCDF files from FTP server ####
 #### (c) Kevin Novak, University of Queensland
-#### Current as of 26 July 2023
+#### Updated 9 Aug 2023
 
 
 ## Uncomment (remove the '#' sign) and run the following code on first run:
