@@ -12,7 +12,7 @@
 
 This repo is *under active development* but includes helpful scripts and functions for downloading and summarising nighttime sea surface temperature data from NOAA's CoralTemp FTP server.
 
-Get NOAA data products such as:
+*Get NOAA data products* such as:
 * Nighttime sea surface temperatures (SST; *sst*)
 * Past year-to-date temperatures (for 2022; *year-to-date_2022*) and current year-to-date temperatures (for 2023; *year-to-date*)
 * SST anomalies (*ssta*)
