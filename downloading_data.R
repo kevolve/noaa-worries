@@ -3,37 +3,52 @@
 #### Updated 9 Aug 2023
 
 
-## Uncomment (remove the '#' sign) and run the following code on first run:
 
-# # Install the required packages (if not installed previously):
-# install.packages(c("tidyverse", "purrr", "RCurl", "ncdf4"))
+#### Install dependencies ####
 
-# # Create the required directories for saving (if they don't exist already):
-# dir.create("data") # run first time only
-# dir.create("data/raw") # run first time only
-
-require(tidyverse)
-require(purrr)
-require(RCurl) # for downloading from ftp server
-library(ncdf4)
-library(raster)
+# Install and load the required packages (if not installed previously):
+if (!require("tidyverse")) {install.packages("tidyverse"); require(tidyverse)}
+if (!require("purrr")) {install.packages("purrr"); require(purrr)}
+if (!require("ncdf4")) {install.packages("ncdf4"); require(ncdf4)}
+if (!require("RCurl")) {install.packages("RCurl"); require(tidyverse)}
 
 
+#### Set options ####
 
-# # Testing:
-# output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw"
-# type = "daily"
-# years = 1988:2023 # all available years
-# measure = "sst"
+# Output path location must have at least ~150 GB of space for downloaded SST data:
+my_download_path = "/Users/uqkbairo/MODRRAP/storage1tb"
+
+# years can range from 1985-2023, be a single year, or multiple separated by a colon
+years = 1988:2023 # all available years
+
+# type is one of: "annual", "monthly", or "daily"
+type = "daily"
+
+# measure is one of: "sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology"
+# see https://github.com/ecolology/noaa-worries/blob/main/README.md for abbreviation definitions
+measure = "sst"
 
 
+#### download_netcdf_files ####
+
+# Define the function for downloading netCDF files from the NOAA server:
 download_netcdf_files <- function(
 		output_path = "data/raw/",
 		years = 2023,
-		type = "daily", # c("annual", "monthly", "daily"),
-		measure = "sst") #c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology")) { 
+		type = c("annual", "monthly", "daily"),
+		measure = c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology")) #
 	{ 
+	require(tidyverse)
+	require(purrr)
+	require(ncdf4)
+	require(RCurl)
 	
+	# Custom functions:
+	check_path <- function(path) {
+		if(!file.exists(path)) stop(paste0("The path: '",path,"' does not exist or is incorrect and cannot be set! Please correct path and try again."))
+		if(str_sub(path,-1,-1) == "/") out_path = path else out_path = paste0(my_path, "/")
+		return(out_path)
+	}
 	list_ftp_files <- function(url) {
 		require(RCurl)
 		cat("Retrieving files...")
@@ -43,7 +58,22 @@ download_netcdf_files <- function(
 			keep(str_detect(., "\\S"))
 	}
 	
-	if(str_sub(output_path,-1,-1) != "/") output_path <- paste0(output_path, "/") # add a final slash if it doesn't have one
+	# Check output path
+	output_path <- check_path(output_path)
+	
+	# Create the data/raw directory for saving 150GB of data (if it doesn't exist already):
+	if(!file.exists(paste0(check_path(my_path),"data/"))) dir.create(paste0(check_path(my_path),"data/"))
+	if(!file.exists(paste0(check_path(my_path),"data/raw/"))) dir.create(paste0(check_path(my_path),"data/raw")) # output files will be in the directory: 'data/raw/'
+	
+	output_path <- paste0(output_path,"data/raw/") # overwrite with new path
+	
+	# Output messages
+	cat(paste0("Downloading data to the following path: '", output_path,"'\n"))
+	if(length(type) > 1) {type = type[1]}; cat(paste0("Type: '",type,"'\n"))
+	if(length(measure) > 1) {measure = measure[1]}; cat(paste0("Measure: '",measure,"'\n"))
+	cat(paste0("Year(s): ", paste0(years, collapse=","),"\n\n"))
+	
+	
 	if(!file.exists(output_path)) stop(paste0("File path '",output_path,"' does not exist!\nCannot begin download!"))
 	if(!file.exists(paste0(output_path, measure))) dir.create(paste0(output_path, measure))
 	if(!(measure %in% c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology"))) 
@@ -111,18 +141,6 @@ download_netcdf_files <- function(
 					closeAllConnections()
 					
 				} else { cat(paste0("All files for the year '",years[i], "' are already downloaded!\n\n"))}
-				
-				# # Loop across files to download sequentially (slower)...
-				# for(ii in seq_along(ftp_files)) {
-				# 	if(file.exists(output_file_paths[ii])) {
-				# 		cat(paste0("File '",ftp_files[ii],"' already exists; skipping...\n\n"))
-				# 	} else {
-				# 		cat(paste0("Downloading '",ftp_files[ii],"' (file ", ii, " of ", length(ftp_files), " for ",years[i],")... "))
-				# 		curl::curl_download(url = paste0(url,years[i],"/",ftp_files), output_file_paths[ii])
-				# 		cat("Complete!\n\n")
-				# 		closeAllConnections()
-				# 	}
-				# }
 			}
 		}
 	} else stop("Invalid type! Please use one of the following: annual, monthly, daily, climatology")
@@ -130,11 +148,21 @@ download_netcdf_files <- function(
 
 
 
-# Usage:
-download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw", 
-					  years = 1985:1988, type = "daily", measure = "sst")
-14*length(1985:2023)/60 # with good internet connection ~14mins per year (365 files), so ~9hr for all files
+#### Usage ####
 
-# IF you see that some of the years had errors in downloading the files, 
-# try again by re-running the above function - it will scan for files
+# The following code runs the download function, storing files in the output location
+download_netcdf_files(output_path = my_download_path, 
+					  years = 1985:2023, 
+					  type = "daily", 
+					  measure = "sst")
+# with good internet connection ~14 mins to download one year's daily temperature data (365 files)
+# so ~9hr for all files
+
+
+#### Troubleshooting ####
+
+# IF you find that some of the files had errors in downloading 
+# (often much smaller file size, and cannot be extracted from), 
+# re-try download again by deleting these files and re-running 
+# the above function for those years - it will scan for files
 # that already exist and skip them.
