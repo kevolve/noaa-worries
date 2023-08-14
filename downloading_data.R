@@ -10,7 +10,7 @@
 if (!require("tidyverse")) {install.packages("tidyverse"); require(tidyverse)}
 if (!require("purrr")) {install.packages("purrr"); require(purrr)}
 if (!require("ncdf4")) {install.packages("ncdf4"); require(ncdf4)}
-if (!require("RCurl")) {install.packages("RCurl"); require(tidyverse)}
+if (!require("RCurl")) {install.packages("RCurl"); require(RCurl)}
 
 
 #### Set options ####

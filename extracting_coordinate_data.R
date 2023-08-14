@@ -8,9 +8,9 @@
 
 # Install and load the required packages (if not installed previously):
 if (!require("tidyverse")) {install.packages("tidyverse"); require(tidyverse)}
-if (!require("sf")) {install.packages("sf"); require(purrr)}
-if (!require("raster")) {install.packages("raster"); require(ncdf4)}
-if (!require("data.table")) {install.packages("data.table"); require(tidyverse)}
+if (!require("sf")) {install.packages("sf"); require(sf)}
+if (!require("raster")) {install.packages("raster"); require(raster)}
+if (!require("data.table")) {install.packages("data.table"); require(data.table)}
 
 
 
@@ -52,6 +52,7 @@ check_path2 <- function(path) {
 	}
 	return(check_path(path))
 }
+my_download_path <- check_path(my_download_path)
 base_file_path <- paste0(check_path2(my_download_path), measure, "/")
 
 # Looping code:
@@ -69,8 +70,9 @@ if(measure == "climatology"){
 		out_ii[[ii]] <- raster::extract(r, target) %>%
 			tibble(reef_index = target$index, varname = var_names[ii], sst = .)
 	}
-	out <- data.table::rbindlist(out_ii)
-	write.csv(out, file = paste0(my_download_path,"/data/gbr_climatology.csv"), row.names = FALSE)
+	out <- data.table::rbindlist(out_ii) %>% 
+		pivot_wider(id_cols = reef_index, names_from = varname, values_from = sst)
+	write.csv(out, file = paste0(my_download_path,"/data/climatology/gbr_climatology.csv"), row.names = FALSE)
 } # Currently broken from below here for the file paths!!***
 
 if(measure == "sst") {
@@ -111,8 +113,8 @@ if(measure == "sst") {
 	year_range <- out %>% mutate(year = str_match(date, regex("(\\d{4})-\\d{2}-\\d{2}"))[,-1]) %>%
 		pull(year) %>% range()
 	if(year_range[1] == year_range[2]) 
-		write.csv(out, file = paste0("data/extracted_data/partial_files/daily_sst_across_gbr_reefs_",year_range[1],".csv"), row.names = FALSE) else
-			write.csv(out, file = paste0("data/extracted_data/partial_files/daily_sst_across_gbr_reefs_",year_range[1],"-",year_range[2],".csv"), row.names = FALSE)
+		write.csv(out, file = paste0(my_download_path,"data/",measure,"/partial_extracted_files/daily_sst_across_gbr_reefs_",year_range[1],".csv"), row.names = FALSE) else
+			write.csv(out, file = paste0(my_download_path,"data",measure,"/partial_extracted_files/daily_sst_across_gbr_reefs_",year_range[1],"-",year_range[2],".csv"), row.names = FALSE)
 	# Run time variable; 5-20 mins/yr dependent on system memory available!
 }
 
@@ -127,7 +129,7 @@ download_netcdf_files(output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/raw
 
 
 #### If you end up with multiple stored copies and want to merge them, use the following script:
-files_to_merge <- list.files("data/extracted_data/") %>%
+files_to_merge <- list.files(paste0(my_download_path,"data/",measure,"/")) %>%
 	str_subset(regex("daily_sst_across_gbr_reefs.*.csv"))
 
 # Confirm that the following files should be merged:
@@ -138,9 +140,8 @@ out_i <- vector(mode = "list", length = length(files_to_merge))
 for(i in seq_along(files_to_merge)) {
 	out_i[[i]] <- read.csv(file = paste0("data/",files_to_merge[i]))
 }
-sst_data <- data.table::rbindlist(out_i) %>% arrange(date, reef_index)
+sst_daily <- data.table::rbindlist(out_i) %>% arrange(date, reef_index)
 # write.csv(sst_data, file = "data/sst_data__daily_across_gbr_reefs.csv", row.names = FALSE)
-save(sst_data, file = "data/sst_data__daily_across_gbr_reefs.RData")
-
+save(sst_daily, file = paste0(my_download_path,"data/",measure,"/sst_daily_across_gbr_reefs.RData"))
 
 

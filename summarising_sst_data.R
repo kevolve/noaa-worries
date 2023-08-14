@@ -1,23 +1,27 @@
-require(tidyverse)
-require(lubridate)
-require(purrr)
+#### Install dependencies ####
+
+# Install and load the required packages (if not installed previously):
+if (!require("tidyverse")) {install.packages("tidyverse"); require(tidyverse)}
+if (!require("purrr")) {install.packages("purrr"); require(purrr)}
+if (!require("sf")) {install.packages("sf"); require(sf)}
+if (!require("lubridate")) {install.packages("lubridate"); require(lubridate)}
+if (!require("data.table")) {install.packages("data.table"); require(data.table)}
 
 # Load the file (if closed after finishing):
-load("data/extracted_sst/sst_data__daily_across_gbr_reefs.RData") # load sst_data object (~20 secs)
-gbr_reefs <- read_sf("data/gbr_reef_coords/gbr_reefs.shp") %>%
-	`colnames<-`(unlist(read.csv("data/gbr_reef_coords/gbr_reefs_names.csv")))
-
+load("data/sst/sst_daily_across_gbr_reefs.RData") # load sst_daily object (~20 secs)
+gbr_reefs <- full_join(read.csv("data/gbr_reef_coords/gbr_reefs.csv"), 
+			   read.csv("data/climatology/gbr_climatology.csv"), by = join_by(reef_index))
 
 # Determine index of Moore Reef
 moore_index <- gbr_reefs %>% 
 	filter(gbr_name == "Moore Reef") %>% 
 	pull(reef_index)
-hinch_index <- gbr_reefs %>% 
-	filter(gbr_name == "Hinchinbrook Reef") %>% 
-	pull(reef_index)
+# hinch_index <- gbr_reefs %>% 
+# 	filter(gbr_name == "Hinchinbrook Reef") %>% 
+# 	pull(reef_index)
 
 # Combine and pre-process Moore Reef data for plotting:
-moore_data <- filter(sst_data, reef_index == moore_index) %>%
+moore_data <- filter(sst_daily, reef_index == moore_index) %>%
 	left_join(gbr_reefs) %>%
 	mutate(date = as.Date(date)) %>%
 	arrange(date) %>% 
@@ -32,7 +36,7 @@ moore_data <- filter(sst_data, reef_index == moore_index) %>%
 	mutate(mean_sst = mean(sst),1,
 		   mean_sst_txt = format(round(mean_sst, 1), nsmall = 1)) %>% ungroup()
 
-View(hinch_data)
+
 #### Plotting the SST data ####
 
 # Create simple plot of all years
@@ -109,7 +113,7 @@ gbr_reefs2 <- gbr_data %>%
 	dplyr::select(ref_ndx, gbr_nm_x, ams_sct) %>%
 	st_drop_geometry() %>%
 	rename(reef_index = ref_ndx, reef_name = gbr_nm_x, aims_sector = ams_sct) %>%
-	full_join(sst_data, by = join_by(reef_index))
+	full_join(sst_daily, by = join_by(reef_index))
 
 # gbr_reefs3 <- gbr_reefs2 %>% 
 # 	# filter(reef_index %in% 1:20) %>% 
