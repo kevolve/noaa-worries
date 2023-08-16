@@ -12,6 +12,14 @@ load("data/sst/sst_daily_across_gbr_reefs.RData") # load sst_daily object (~20 s
 gbr_reefs <- full_join(read.csv("data/gbr_reef_coords/gbr_reefs.csv"), 
 			   read.csv("data/climatology/gbr_climatology.csv"), by = join_by(reef_index))
 
+sst_yearly <-
+	sst_daily %>%
+	mutate(year = lubridate::year(date)) %>%
+	group_by(reef_index, year) %>%
+	summarise(mean_sst = sst)
+save(sst_yearly, file="data/sst/sst_daily_across_gbr_reefs.RData") # load sst_daily object (~20 secs)
+
+
 # Determine index of Moore Reef
 moore_index <- gbr_reefs %>% 
 	filter(gbr_name == "Moore Reef") %>% 
