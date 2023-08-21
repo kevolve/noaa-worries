@@ -145,3 +145,12 @@ sst_daily <- data.table::rbindlist(out_i) %>% arrange(date, reef_index)
 save(sst_daily, file = paste0(my_download_path,"data/",measure,"/sst_daily_across_gbr_reefs.RData"))
 
 
+# Save in wide format:
+load("data/sst/sst_daily_across_gbr_reefs.RData") # load sst_daily object (~20 secs)
+sst_daily_wide <- sst_daily %>%
+	arrange(reef_index) %>%
+	pivot_wider(names_from = date, values_from = sst)
+save(sst_daily_wide, file = "data/sst/sst_daily_wide_across_gbr_reefs.RData")
+
+
+
