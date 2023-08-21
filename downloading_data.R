@@ -38,6 +38,26 @@ download_netcdf_files <- function(
 		type = c("annual", "monthly", "daily"),
 		measure = c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology")) #
 	{ 
+	
+	# Use this function to verify that a specific file has downloaded alright!
+	check_md5 <- function(file_path) {
+		# file_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/climatology/ct5km_climatology_v3.1.nc"
+		md5_file_path = paste0(file_path, ".md5")
+		if(file.exists(md5_file_path)) {
+			orig_md5 = as.character(read.table(md5_file_path))[1]
+		} else stop(".md5 file for this file does not exist!")
+		file_md5 <- paste0("md5sum ",file_path) %>% # define CL command
+			system(intern = TRUE) %>% # run checksums on file
+			str_extract(regex("^\\w*")) # extract only the alphanumerics of md5
+		if(all.equal(orig_md5, file_md5) == TRUE) {
+			return(TRUE)
+		} else {
+			cat("Error with check_md5!")
+			cat(all.equal(orig_md5, file_md5))
+			return(FALSE)
+		}
+	}
+
 	require(tidyverse)
 	require(purrr)
 	require(ncdf4)

@@ -2,6 +2,7 @@
 #### (c) Kevin Novak, University of Queensland
 #### Updated 9 Aug 2023
 
+# Note: currently an issue with reef_index being off! Especially after reef_index>1000
 
 
 #### Install dependencies ####
@@ -45,36 +46,47 @@ check_path <- function(path) {
 	if(!file.exists(path)) stop(paste0("The path: '",path,"' does not exist or is incorrect and cannot be set! Please correct path and try again."))
 	if(str_sub(path,-1,-1) == "/") out_path = path else out_path = paste0(path, "/")
 	return(out_path)}
-check_path2 <- function(path) {
+check_path2 <- function(path, measure) {
 	path <- check_path(path)
-	if(!str_detect(path, regex("data/raw/$"))) {
-		if(!str_detect(path, regex("data/$"))) {path = paste0(path, "data/raw/")} else {path = paste0(path, "raw/")}
+	if(str_detect(path, regex("data/$"))) {path = paste0(path, measure,"/")}
+	
+	if(measure == "climatology") {
+		if(!( str_detect(path, regex("data/$")) | str_detect(path, regex(paste0(measure,"/$"))) )) {
+			path = paste0(path, "data/", measure,"/")
+		}
 	}
+	if(measure != "climatology") {
+		if(str_detect(path, regex(paste0(measure,"/$")))) {path = paste0(path, "raw/")}
+		if(!( str_detect(path, regex("data/$")) | str_detect(path, regex(paste0(measure,"/$"))) | str_detect(path, regex("raw/$")) )) {
+			path = paste0(path, "data/", measure,"/raw/")
+		} 
+	} 
 	return(check_path(path))
 }
-my_download_path <- check_path(my_download_path)
-base_file_path <- paste0(check_path2(my_download_path), measure, "/")
+# Re-define path if needed
+my_download_path <- check_path2(my_download_path, measure)
 
 # Looping code:
 out_i <- vector(mode = "list", length = length(years))
 start_tm = Sys.time() # record start time
-cat("Starting SST extraction...\n")
+cat("Starting extraction...\n")
 if(measure == "climatology"){
-	nc_file <- list.files(base_file_path) %>% 
+	nc_file <- list.files(my_download_path) %>% 
 		str_subset(., regex(".*.nc$"))
-	file_path <- paste0(base_file_path,nc_file)
-	var_names <- names(nc_open(file_path)$var[1:13])
+	file_path <- paste0(my_download_path, nc_file)
+	var_names <- names(ncdf4::nc_open(file_path)$var[1:13])
 	out_ii <- vector(mode = "list", length = length(var_names))
 	for(ii in seq_along(var_names)){
 		r <- raster::raster(file_path, varname = var_names[ii])
 		out_ii[[ii]] <- raster::extract(r, target) %>%
-			tibble(reef_index = target$index, varname = var_names[ii], sst = .)
+			tibble(value = .)
 	}
-	out <- data.table::rbindlist(out_ii) %>% 
-		pivot_wider(id_cols = reef_index, names_from = varname, values_from = sst)
-	write.csv(out, file = paste0(my_download_path,"/data/climatology/gbr_climatology.csv"), row.names = FALSE)
+	out <- out_ii %>% 
+		purrr::list_cbind() %>% 
+		`colnames<-`(var_names) %>% 
+		cbind(reef_index = target$index, .)
+	write.csv(out, file = paste0(my_download_path,"gbr_climatology.csv"), row.names = FALSE)
 } # Currently broken from below here for the file paths!!***
-
 if(measure == "sst") {
 	for(i in seq_along(years)){
 		year_tm = Sys.time() # record start time
