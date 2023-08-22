@@ -66,7 +66,7 @@ download_netcdf_files <- function(
 	# Custom functions:
 	check_path <- function(path) {
 		if(!file.exists(path)) stop(paste0("The path: '",path,"' does not exist or is incorrect and cannot be set! Please correct path and try again."))
-		if(str_sub(path,-1,-1) == "/") out_path = path else out_path = paste0(my_path, "/")
+		if(str_sub(path,-1,-1) == "/") out_path = path else out_path = paste0(path, "/")
 		return(out_path)
 	}
 	list_ftp_files <- function(url) {
