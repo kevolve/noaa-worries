@@ -22,11 +22,11 @@ my_download_path = "/Users/uqkbairo/MODRRAP/storage1tb"
 years = 1988:2023 # all available years
 
 # type is one of: "annual", "monthly", or "daily"
-type = "daily"
+type = "annual"
 
 # measure is one of: "sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology"
 # see https://github.com/ecolology/noaa-worries/blob/main/README.md for abbreviation definitions
-measure = "sst"
+measure = "dhw"
 
 
 #### download_netcdf_files ####
@@ -82,8 +82,8 @@ download_netcdf_files <- function(
 	output_path <- check_path(output_path)
 	
 	# Create the data/raw directory for saving 150GB of data (if it doesn't exist already):
-	if(!file.exists(paste0(check_path(my_path),"data/"))) dir.create(paste0(check_path(my_path),"data/"))
-	if(!file.exists(paste0(check_path(my_path),"data/raw/"))) dir.create(paste0(check_path(my_path),"data/raw")) # output files will be in the directory: 'data/raw/'
+	if(!file.exists(paste0(check_path(output_path),"data/"))) dir.create(paste0(check_path(output_path),"data/"))
+	if(!file.exists(paste0(check_path(output_path),"data/raw/"))) dir.create(paste0(check_path(output_path),"data/raw")) # output files will be in the directory: 'data/raw/'
 	
 	output_path <- paste0(output_path,"data/raw/") # overwrite with new path
 	
@@ -122,10 +122,16 @@ download_netcdf_files <- function(
 		# hs = hot spot; dhw = degree heating weeks
 		
 		
-		
-		url <- paste0(base_path, end_path, measure, "/")
-		years_avail <- list_ftp_files(url)
-		
+		if(measure == "daily") {
+			url <- paste0(base_path, end_path, measure, "/")
+		}
+		if(measure == "annual") {
+			url <- paste0(base_path, end_path)
+			
+		}
+		years_avail <- list_ftp_files(url) # takes a while
+		"ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/dhw/"
+		'ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/annual'
 		
 		for(i in seq_along(years)) {
 			if(!(years[i] %in% years_avail)) {
@@ -177,6 +183,12 @@ download_netcdf_files(output_path = my_download_path,
 					  measure = "sst")
 # with good internet connection ~14 mins to download one year's daily temperature data (365 files)
 # so ~9hr for all files
+
+
+download_netcdf_files(output_path = my_download_path, 
+					  years = 1985:2023, 
+					  type = "annual", 
+					  measure = "dhw")
 
 
 #### Troubleshooting ####
