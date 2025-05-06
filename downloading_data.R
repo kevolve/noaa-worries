@@ -1,8 +1,9 @@
-#### Downloading netCDF files from FTP server ####
-#### (c) Kevin Novak, University of Queensland
-#### Updated 9 Aug 2023
+#### Download netCDF files from NOAA CoralWatch FTP server ####
+#### (c) Kevin Novak, AIMS
+#### Updated 7 May 2025
 
-
+# TODO: Emojify cat() messages!
+# TODO: Check for previous saves, verify download with checksums, save only for files not properly downloaded
 
 #### Install dependencies ####
 
@@ -16,17 +17,17 @@ if (!require("RCurl")) {install.packages("RCurl"); require(RCurl)}
 #### Set options ####
 
 # Output path location must have at least ~150 GB of space for downloaded SST data:
-my_download_path = "/Users/uqkbairo/MODRRAP/storage1tb"
+output_path = "/Users/uqkbairo/MODRRAP/storage1tb"
 
 # years can range from 1985-2023, be a single year, or multiple separated by a colon
-years = 1988:2023 # all available years
+years = 1988:2025 # all available years
 
 # type is one of: "annual", "monthly", or "daily"
-type = "annual"
+type = "daily"
 
 # measure is one of: "sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology"
 # see https://github.com/ecolology/noaa-worries/blob/main/README.md for abbreviation definitions
-measure = "dhw"
+measure = "sst"
 
 
 #### download_netcdf_files ####
@@ -38,7 +39,32 @@ download_netcdf_files <- function(
 		type = c("annual", "monthly", "daily"),
 		measure = c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology")) #
 	{ 
+	# from: https://www.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/
+	# baa = bleaching alert area; sst = sea surface temperature; ssta = SST anomaly
+	# hs = hot spot; dhw = degree heating weeks
 	
+	if(!(measure %in% c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology"))) 
+		stop("Invalid measure! Try one of the following: baa, baa-max-7d, cliatology, dhw, hs, sst, ssta, sst-trend-7d, year-to-date_2022, year-to-date")
+	
+	require(tidyverse)
+	require(purrr)
+	require(ncdf4)
+	require(RCurl)
+	
+	# Custom functions:
+	check_path <- function(file) {
+		if(stringr::str_detect(file, regex(".*\\..*"))) path = dirname(file) else path = file
+		if(stringr::str_sub(path,-1,-1) != "/") path = paste0(path, "/")
+		if(!file.exists(path)) {dir.create(path, recursive = TRUE); cat(paste0("Created path ", path, "\n"))}
+		return(path)
+	}
+	list_ftp_files <- function(url) {
+		RCurl::getURL(url, ftp.use.epsv = FALSE, crlf = TRUE, dirlistonly = TRUE) %>% 
+			str_split(pattern="\n", simplify = TRUE) %>% 
+			as.character() %>% 
+			keep(str_detect(., "\\S")) %>%
+			sort()
+	}
 	# Use this function to verify that a specific file has downloaded alright!
 	check_md5 <- function(file_path) {
 		# file_path = "/Users/uqkbairo/MODRRAP/storage1tb/data/climatology/ct5km_climatology_v3.1.nc"
@@ -57,95 +83,69 @@ download_netcdf_files <- function(
 			return(FALSE)
 		}
 	}
-
-	require(tidyverse)
-	require(purrr)
-	require(ncdf4)
-	require(RCurl)
-	
-	# Custom functions:
-	check_path <- function(path) {
-		if(!file.exists(path)) stop(paste0("The path: '",path,"' does not exist or is incorrect and cannot be set! Please correct path and try again."))
-		if(str_sub(path,-1,-1) == "/") out_path = path else out_path = paste0(path, "/")
-		return(out_path)
-	}
-	list_ftp_files <- function(url) {
-		require(RCurl)
-		cat("Retrieving files...")
-		RCurl::getURL(url, ftp.use.epsv = FALSE, crlf = TRUE, dirlistonly = TRUE) %>% 
-			str_split(pattern="\n", simplify = TRUE) %>% 
-			as.character() %>% 
-			keep(str_detect(., "\\S"))
-	}
 	
 	# Check output path
 	output_path <- check_path(output_path)
-	
-	# Create the data/raw directory for saving 150GB of data (if it doesn't exist already):
-	if(!file.exists(paste0(check_path(output_path),"data/"))) dir.create(paste0(check_path(output_path),"data/"))
-	if(!file.exists(paste0(check_path(output_path),"data/raw/"))) dir.create(paste0(check_path(output_path),"data/raw")) # output files will be in the directory: 'data/raw/'
-	
-	output_path <- paste0(output_path,"data/raw/") # overwrite with new path
+	output_path2 <- check_path(paste0(str_remove(output_path, paste0("data/raw/",measure,"/$")),paste0("data/raw/",measure,"/")))
+	base_url = "ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/"
 	
 	# Output messages
-	cat(paste0("Downloading data to the following path: '", output_path,"'\n"))
+	cat(paste0("Downloading data to: '", output_path2,"'\n"))
 	if(length(type) > 1) {type = type[1]}; cat(paste0("Type: '",type,"'\n"))
 	if(length(measure) > 1) {measure = measure[1]}; cat(paste0("Measure: '",measure,"'\n"))
-	cat(paste0("Year(s): ", paste0(years, collapse=","),"\n\n"))
+	if(length(years) == length(min(years):max(years))){
+		cat(paste0("Years from: ", min(years), "-", max(years),"\n\n"))
+	} else cat(paste0("Year(s): ", paste0(years, collapse=","),"\n\n"))
 	
 	
-	if(!file.exists(output_path)) stop(paste0("File path '",output_path,"' does not exist!\nCannot begin download!"))
-	if(!file.exists(paste0(output_path, measure))) dir.create(paste0(output_path, measure))
-	if(!(measure %in% c("sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology"))) 
-		stop("Invalid measure! Try one of the following: baa, baa-max-7d, cliatology, dhw, hs, sst, ssta, sst-trend-7d, year-to-date_2022, year-to-date")
-	
-	base_path = "ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/"
 	
 	if(measure == "climatology") {
-		end_path = "climatology/nc"
-		url <- paste0(base_path, end_path,"/")
-		ftp_files <- list_ftp_files(url)
-		output_file_paths <- paste0(output_path, measure,"/", ftp_files)
+		end_url = "climatology"
+		url <- paste0(base_url, end_url,"/")
+		climatology_filename <- list_ftp_files(url) %>% str_subset(".*.nc")
+		if(length(climatology_filename) > 1) stop("'/climatology/' on FTP server contains multiple .nc files!")
 		
-		# Download the paths
-		cat(paste0("\nDownloading ",length(ftp_files)," files..."))
-		map2(paste0(url, ftp_files), output_file_paths, curl::curl_download) # for downloading all in one fell swoop without live updating
-		cat("Complete!\n")
+		# ** CHECK IF FILE IS DOWNLOADED ALREADY
+		
+		# Download climatology
+		output_file_path <- paste0(output_path2, climatology_filename)
+		cat(paste0("\nDownloading ",climatology_filename," file to:\n",output_file_path, "\n"))
+		map2(paste0(url, climatology_filename), output_file_path, curl::curl_download) # for downloading all in one fell swoop without live updating
+		curl::curl_download(url=paste0(url, climatology_filename), output_file_path)
+		cat("Download complete!\n")
 		
 		
 	} else if (type %in% c("annual", "monthly", "daily")) {
-		end_path = paste0("nc/v1.0/", type, "/")
+		end_url = paste0("nc/v1.0/", type, "/")
 		
 		
-		# from: https://www.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/
-		# baa = bleaching alert area; sst = sea surface temperature; ssta = SST anomaly
-		# hs = hot spot; dhw = degree heating weeks
+	
 		
 		
-		if(measure == "daily") {
-			url <- paste0(base_path, end_path, measure, "/")
+		if(type == "daily") {
+			url <- paste0(base_url, end_url, measure, "/")
 		}
-		if(measure == "annual") {
-			url <- paste0(base_path, end_path)
+		if(type == "annual") {
+			url <- paste0(base_url, end_url)
 			
 		}
 		years_avail <- list_ftp_files(url) # takes a while
-		"ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/dhw/"
-		'ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/annual'
+		# "ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/dhw/"
+		# 'ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/annual'
 		
 		for(i in seq_along(years)) {
+			if() # check that file is already downloaded
+			
 			if(!(years[i] %in% years_avail)) {
 				cat(paste0("The year '",years[i],"' was not found in the database!\n"))
 			} else {
-				ftp_files <- list_ftp_files(paste0(url,years[i],"/")) %>% 
-					str_subset(pattern = regex("nc$")) %>% # must end with .nc (ignore checksum files ending with .md5)
+				year_filenames <- list_ftp_files(paste0(url,years[i],"/")) %>% 
+					# str_subset(pattern = regex("nc$")) %>% # must end with .nc (ignore checksum files ending with .md5)
 					sort()
 				closeAllConnections()
 				cat("\n")
 				
-				if(!file.exists(paste0(output_path,"/",measure))) stop("File path '",paste0(output_path,measure),"' does not exist!\nCannot begin download!")
-				
-				output_file_dir <-  paste0(output_path,measure,"/",years[i],"/")
+				output_file_dir <-  paste0(output_path2,measure,"/",years[i],"/")
 				if(!file.exists(output_file_dir)) dir.create(output_file_dir) # create the year's file if it doesn't exist already
 				existing_files <- list.files(path = output_file_dir)
 				ftp_files <- ftp_files[!(ftp_files %in% existing_files)]
@@ -177,15 +177,15 @@ download_netcdf_files <- function(
 #### Usage ####
 
 # The following code runs the download function, storing files in the output location
-download_netcdf_files(output_path = my_download_path, 
-					  years = 1985:2023, 
+download_netcdf_files(output_path, 
+					  years = 1985:2025, 
 					  type = "daily", 
 					  measure = "sst")
 # with good internet connection ~14 mins to download one year's daily temperature data (365 files)
 # so ~9hr for all files
 
 
-download_netcdf_files(output_path = my_download_path, 
+download_netcdf_files(output_path, 
 					  years = 1985:2023, 
 					  type = "annual", 
 					  measure = "dhw")
