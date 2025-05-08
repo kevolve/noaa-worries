@@ -134,7 +134,7 @@ download_netcdf_files <- function(
 		# 'ftp://ftp.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/annual'
 		
 		for(i in seq_along(years)) {
-			if() # check that file is already downloaded
+			# if() # check that file is already downloaded
 			
 			if(!(years[i] %in% years_avail)) {
 				cat(paste0("The year '",years[i],"' was not found in the database!\n"))
@@ -145,28 +145,34 @@ download_netcdf_files <- function(
 				closeAllConnections()
 				cat("\n")
 				
-				output_file_dir <-  paste0(output_path2,measure,"/",years[i],"/")
-				if(!file.exists(output_file_dir)) dir.create(output_file_dir) # create the year's file if it doesn't exist already
+				output_file_dir <-  check_path(paste0(output_path2,years[i],"/"))
 				existing_files <- list.files(path = output_file_dir)
-				ftp_files <- ftp_files[!(ftp_files %in% existing_files)]
-				if(length(ftp_files) > 0) {
-					
-					output_file_paths <- paste0(output_file_dir, ftp_files)
-					input_urls <- paste0(url,years[i],"/",ftp_files)
+				
+				files_downloaded <- intersect(year_filenames, existing_files)
+				# **Make a checksums check here for completed files not included!
+				# remove any files that fail checksums!
+				
+				existing_files <- list.files(path = output_file_dir) # re-assess existing files after deletions!
+				files_to_download <- setdiff(year_filenames, existing_files)
+				
+				if(length(files_to_download) >= 1) {
+					cat(paste0("Starting year ",years[i], " download... (",length(files_to_download)," files)\n")) # line not working for some reason?
+					start_tm = Sys.time() # record start time
+				
+					file_urls <- paste0(url,years[i],"/",files_to_download)
+					output_file_paths <- paste0(output_file_dir, files_to_download)
 					
 					# Download all files using curl's multi_download (in parallel; allows for resuming of large files)
-					cat(paste0("Starting year ",years[i], " download... (",length(ftp_files)," files)\n")) # line not working for some reason?
-					# cat(paste0("Starting year download...\n")) # line not working for some reason?
-					start_tm = Sys.time() # record start time
-					x <- curl::multi_download(urls = input_urls, destfiles = output_file_paths)
+					x <- curl::multi_download(urls = file_urls, destfiles = output_file_paths)
 					x_err <- x$error[!is.na(x$error)];
 					if(any(x_err != "")) {x_err <- x_err[x_err != ""]
 					cat(paste0(length(x_err), " file(s) failed to download with the following error(s): \n", paste0(x_err,collapse = "\n"), "\n"))}
 					runtime = round(as.numeric(difftime(Sys.time(), start_tm, units = "mins")),2) # record run time
 					cat(paste0("Download complete in ",runtime," mins!\n\n"))
 					closeAllConnections()
-					
-				} else { cat(paste0("All files for the year '",years[i], "' are already downloaded!\n\n"))}
+				} else { 
+					cat(paste0("All files for the year '",years[i], "' are already downloaded!\n\n"))
+				}
 			}
 		}
 	} else stop("Invalid type! Please use one of the following: annual, monthly, daily, climatology")
@@ -186,7 +192,7 @@ download_netcdf_files(output_path,
 
 
 download_netcdf_files(output_path, 
-					  years = 1985:2023, 
+					  years = 2023:2025, 
 					  type = "annual", 
 					  measure = "dhw")
 
