@@ -2,6 +2,8 @@
 #### (c) Kevin Novak, AIMS
 #### Updated 7 May 2025
 
+# TODO: Fix up filter using expand_grid for simplicity for querying files available
+# TODO: Create output for checksum function and allow deletion and re-running in while loop for failed checksums
 # TODO: Emojify cat() messages!
 # TODO: Check for previous saves, verify download with checksums, save only for files not properly downloaded
 
@@ -23,11 +25,13 @@ output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data"
 years = 1988:2025 # all available years
 
 # timeframe is one of: "annual", "monthly", or "daily"
-timeframe = "daily"
+timeframe = "annual"
 
 # measure is one of: "sst", "baa", "baa-max-7d", "dhw", "hs", "ssta", "sst-trend-7d", "year-to-date_2022", "year-to-date", "climatology"
 # see https://github.com/ecolology/noaa-worries/blob/main/README.md for abbreviation definitions
-measure = "sst"
+measure = "dhw"
+
+summary_type = NULL
 
 output_path = "/Users/uqkbairo/MODRRAP/storage1tb/data"
 years = c(1992,1999)
@@ -48,7 +52,7 @@ download_netcdf_files <- function(
 		output_path = "data/raw/",
 		years = NULL,
 		measure = c("climatology", "baa", "baa5", "dhw", "hs", "sst", "ssta"),
-		summary_type = "all",
+		summary_type = NULL,
 		timeframe = c("annual", "monthly", "daily", "climatology")) #
 {
 	# from: https://www.star.nesdis.noaa.gov/pub/sod/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/
@@ -189,18 +193,26 @@ download_netcdf_files <- function(
 		
 		# Keep only some summary_types (if supplied):
 		if(summary_type[1] != "all") {
-			possible_summary_types <- filenames %>% str_subset(paste0("^ct5km_",measure,".*$")) %>% str_remove("^.*-") %>% str_remove("_.*$") %>% unique
-			file_i <- filenames %>% 
-				str_which(paste0("^ct5km_", measure,"-",summary_type, "_v3.1_.*$", collapse="|"))
-			filenames <- filenames[file_i]
+			data.frame(measure = measure, summary_type = summary_type) %>% 
+			  expand_grid() %>%
+		    mutate(paste0("^ct5km_", measure,"-",possible_summary_types, "_v3.1_.*$", collapse="|"))
+		} else {
+		  possible_summary_types <- filenames %>% str_subset(paste0("^ct5km_",measure,".*$")) %>% str_remove("^.*-") %>% str_remove("_.*$") %>% unique
+####### ******* broken!
 		}
+		
+		
+			file_i <- filenames %>%
+				str_which()
+			filenames <- filenames[file_i]
+		
 		
 		# Assign full url and save paths for curl download:
 		if(length(filenames) == 0) {
 			warning(paste0("Summary type(s): '", paste0(summary_type, collapse=", "), "' returned zero results, try instead: ", paste0(possible_summary_types, collapse=", ")))
 		} else {
-			url_file_paths <- c(url_file_paths, paste0(folder_url, filenames))
-			save_file_paths <- c(save_file_paths, paste0(timeframe_paths[timeframe == "annual"], filenames))
+			url_file_paths <- c(paste0(folder_url, filenames))
+			save_file_paths <- c(paste0(timeframe_paths[timeframe == "annual"], filenames))
 		}
 	} # end annual
 	
@@ -255,45 +267,60 @@ download_netcdf_files <- function(
 		checksum(nc_file_paths[i])
 	}
 	
-	extant_files_i <- c()
-	for(i in 1:length(save_file_paths)) {
-		if(file.exists(save_file_paths[i])){
-			extant_files_i <- c(extant_files_i, i)
-		}
+	# Check extant files and remove
+	extant_files_i <- which(sapply(save_file_paths, file.exists))
+	if(length(extant_files_i) > 0) {
+	  url_file_paths_tmp <- url_file_paths[-extant_files_i]
+	  save_file_paths_tmp <- save_file_paths[-extant_files_i]
+	} else{
+	  url_file_paths_tmp <- url_file_paths
+	  save_file_paths_tmp <- save_file_paths
 	}
-	url_file_paths <- url_file_paths[-extant_files_i]
-	save_file_paths <- save_file_paths[-extant_files_i]
 	
-	if(length(save_file_paths) > 0) {
-		cat(paste0("Starting main download... ", length(save_file_paths), " files to download\n")) # line not working for some reason?
-		
-		closeAllConnections()
-		start_tm = Sys.time() # record start time
-		
-		curl_downloads <- curl::multi_download(urls = url_file_paths, destfiles = save_file_paths, resume = TRUE)
-		curl_errors <- curl_downloads$error[!is.na(curl_downloads$error)];
-		if(any(curl_errors != "")) {
-			curl_errors <- curl_errors[curl_errors != ""]
-			cat(paste0(length(curl_errors), " file(s) failed to download with the following error(s): \n", paste0(curl_errors, collapse = "\n"), "\n\n"))
-		}
-		cat("Download complete!\n")
-		
-		
-		# Checksums:
-		cat("Completing checksums...\n")
-		nc_file_paths <- save_file_paths %>% str_subset(".*.nc$")
-		md5_file_paths <- paste0(nc_file_paths,".md5")
-		for(i in 1:length(nc_file_paths)) {
-			checksum(nc_file_paths[i])
-		}
-	} else { 
-		cat(paste0("All files for the year '",years[i], "' are already downloaded!\n\n"))
-		
-		runtime = round(as.numeric(difftime(Sys.time(), start_tm, units = "mins")),2) # record run time
-		cat(paste0("Full download completed in ",runtime," mins!\n\n"))
-		
-		
-	} # length is non-zero check
+	cat(paste0("Starting main download... ", length(save_file_paths_tmp), " files to download\n")) # line not working for some reason?
+	
+	closeAllConnections()
+	start_tm = Sys.time() # record start time
+	
+	n_fails = 0
+	loop_init_n = length(save_file_paths_tmp)
+	while(length(save_file_paths_tmp) > 0 && n_fails <= 5){
+	  
+	  
+	  curl_downloads <- curl::multi_download(urls = url_file_paths_tmp, destfiles = save_file_paths_tmp, resume = TRUE)
+	  curl_errors <- curl_downloads$error[!is.na(curl_downloads$error)];
+	  
+	  # Remove extant files:
+	  extant_files_i <- which(sapply(save_file_paths_tmp, file.exists))
+	  if(length(extant_files_i) > 0) {
+	    url_file_paths_tmp <- url_file_paths_tmp[-extant_files_i]
+	    save_file_paths_tmp <- save_file_paths_tmp[-extant_files_i]
+	  }
+	  
+	  if(loop_init_n == length(save_file_paths_tmp)) n_fails <- n_fails + 1
+	  
+	  if(length(save_file_paths_tmp) > 0) {
+	    curl_errors <- curl_errors[curl_errors != ""]
+	    cat(paste0(length(save_file_paths_tmp), " file(s) failed to download, retrying...\n\n"))
+	    Sys.sleep(10)
+	  } else break
+	  
+	}
+	cat("Download complete!\n")
+	
+	
+	# Checksums:
+	cat("Completing checksums...\n")
+	nc_file_paths <- save_file_paths %>% str_subset(".*.nc$")
+	md5_file_paths <- paste0(nc_file_paths,".md5")
+	for(i in 1:length(nc_file_paths)) {
+	    checksum(nc_file_paths[i])
+	}
+	
+	cat(paste0("All files for the year '",years[i], "' are already downloaded!\n\n"))
+	
+	runtime = round(as.numeric(difftime(Sys.time(), start_tm, units = "mins")),2) # record run time
+	cat(paste0("Full download completed in ",runtime," mins!\n\n"))
 	
 	closeAllConnections()
 	return(T) # If we made it to the end, return TRUE
