@@ -39,7 +39,7 @@ def download_file(file, remote_year_dir, local_year_dir):
 
 def download_sst(years, workers):
     base_remote_dir = '/pub/socd/mecb/crw/data/5km/v3.1_op/nc/v1.0/daily/sst/'
-    download_dir = Path('/Users/uqkbairo/Downloads/years')
+    download_dir = Path('/QRISdata/Q5947/storage1tb/data/sst/raw/')
     download_dir.mkdir(exist_ok=True)
 
     for year in years:
