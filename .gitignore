@@ -1,6 +1,14 @@
-gitignore/
+.DS_Store
 .DS_store
 ~.*
 .Rproj.user
-data
+.Rhistory
+__pycache__/
+*.pyc
+*.log
 MODRRAP
+inst/
+# Large local data; only C_gbr_data/gbr_reefs.csv is tracked
+C_gbr_data/sst/
+C_gbr_data/climatology/
+C_gbr_data/gbr_reef_coords/

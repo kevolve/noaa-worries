@@ -1,0 +1,13 @@
+{
+  "roots": {
+    "hpc": "/QRISdata/Q5947/sst",
+    "local": "/Users/uqkbairo/MODRRAP/sst"
+  },
+  "server": {
+    "host": "ftp.star.nesdis.noaa.gov",
+    "base": "/pub/socd/mecb/crw/data/5km/v3.1_op"
+  },
+  "regions": {
+    "gbr": {"lon": [141.5, 154.5], "lat": [-25.5, -9.5]}
+  }
+}

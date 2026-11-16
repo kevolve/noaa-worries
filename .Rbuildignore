@@ -1,0 +1,8 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^A_scripts$
+^B_hpc_scripts$
+^C_gbr_data$
+^D_plots$
+^MODRRAP$
+^README\.md$
