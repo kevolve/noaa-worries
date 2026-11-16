@@ -43,12 +43,16 @@ Cell centres: `lon = -179.975 + 0.05 * ix`, `lat = 89.975 - 0.05 * iy`, where `i
 ## Setup
 
 1. Clone the repository and work from its root.
-2. Install Python packages: `python3 -m pip install --user -r A_scripts/functions/requirements.txt`
-3. Install R packages: `install.packages(c("arrow", "dplyr", "jsonlite", "tibble"))`
-4. Set the data root. The first existing path under `roots` in `A_scripts/functions/crw_config.json` is used (`/QRISdata/Q5947/sst` on the HPC, `/Users/uqkbairo/MODRRAP/sst` locally). Override with the `CRW_ROOT` environment variable or `--root`.
-5. Check the environment: `python3 A_scripts/functions/crw_archive.py check --network`
+2. Activate the environment: `source A_scripts/environment/activate_env.sh`. This:
+   - on the HPC (where environment modules exist) runs `module purge`, then loads `miniforge/25.3.0-3` and `r/4.4.0-gfbf-2023a`; other module names can be set with `CRW_CONDA_MODULE` and `CRW_R_MODULE`;
+   - creates a conda environment named `crw` from `environment.yml` on first use (Python with numpy, netCDF4 and pyarrow), then activates it;
+   - checks the required packages and prints the install command for any that are missing.
+3. Set the data root. The first existing path under `roots` in `A_scripts/functions/crw_config.json` is used (`/QRISdata/Q5947/sst` on the HPC, `/Users/uqkbairo/MODRRAP/sst` locally). Override with the `CRW_ROOT` environment variable or `--root`.
+4. Check the environment and server: `python3 A_scripts/functions/crw_archive.py check --network`
 
-The check lists each required package and stops with installation instructions when one is missing. Every other command runs the same package check first.
+R packages are installed once into the R library in use: `install.packages(c("arrow", "dplyr", "jsonlite", "tibble", "ggplot2"))`.
+
+Without conda, set `CRW_SKIP_CONDA=1` before sourcing and install the Python packages with `python3 -m pip install -r A_scripts/functions/requirements.txt`. Every `crw_archive.py` command also checks the Python packages itself before running.
 
 ## Building and updating
 
@@ -61,7 +65,7 @@ $CRW extract --region gbr --product sst dhw --timeframe daily monthly annual
 $CRW status
 ```
 
-`update` compares the NOAA server listing with the archive and fetches only missing files, so the same command builds the archive the first time and keeps it current afterwards. `--dry-run` lists what would be fetched. On an HPC, submit `B_hpc_scripts/update_archive.slurm` after adding the cluster's account, partition and Python environment lines.
+`update` compares the NOAA server listing with the archive and fetches only missing files, so the same command builds the archive the first time and keeps it current afterwards. `--dry-run` lists what would be fetched. On an HPC, submit `B_hpc_scripts/update_archive.slurm` after adding the cluster's account and partition lines; the job activates the conda environment itself.
 
 The same steps are available from R: see `A_scripts/01_check_environment.R` to `A_scripts/04_read_and_dhw.R`.
 
@@ -97,7 +101,9 @@ Sources: [CRW 5 km methodology](https://coralreefwatch.noaa.gov/product/5km/meth
 |---|---|
 | `A_scripts/` | numbered example workflows |
 | `A_scripts/functions/` | R functions, `crw_archive.py`, `crw_config.json`, `requirements.txt` |
+| `A_scripts/environment/` | `activate_env.sh`, sourced to create/activate the conda environment |
 | `A_scripts/legacy/` | superseded scripts |
+| `environment.yml` | conda environment definition |
 | `B_hpc_scripts/` | SLURM job template |
 | `C_gbr_data/` | GBR reef coordinates with matching `cell_id` (`gbr_reefs.csv`); larger local files are not tracked |
 | `D_plots/` | figures |

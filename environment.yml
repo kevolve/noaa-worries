@@ -1,0 +1,15 @@
+# Conda environment for the NOAA CRW archive tools (Python only).
+# R comes from the HPC module loaded by activate_env.sh, or the system R locally.
+# Created automatically by A_scripts/environment/activate_env.sh, or by hand:
+#   conda env create -f environment.yml
+# Update an existing environment after editing this file:
+#   conda env update -n crw -f environment.yml --prune
+name: crw
+channels:
+  - conda-forge
+dependencies:
+  # Archive building (A_scripts/functions/crw_archive.py)
+  - python=3.11
+  - numpy>=1.20
+  - netcdf4>=1.5
+  - pyarrow>=12.0

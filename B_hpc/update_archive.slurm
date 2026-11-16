@@ -16,9 +16,10 @@
 
 set -euo pipefail
 
-# Load or activate a Python environment here (cluster-specific), e.g.
-# module load python
-# source ~/venvs/crw/bin/activate
+# Purges modules, loads miniforge/25.3.0-3 and r/4.4.0-gfbf-2023a, activates
+# the "crw" conda environment (created from environment.yml on first use)
+# and checks the required packages.
+source A_scripts/environment/activate_env.sh || exit 1
 
 export CRW_ROOT=/QRISdata/Q5947/sst
 CRW="python3 A_scripts/functions/crw_archive.py"
