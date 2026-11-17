@@ -6,13 +6,12 @@
 #SBATCH --mem=32G
 #SBATCH --time=48:00:00
 #SBATCH --output=crw_archive_%j.log
-# Add the account and partition lines required by the cluster, e.g.
-# #SBATCH --account=<account>
-# #SBATCH --partition=<partition>
-#
-# Builds or updates the archive under /QRISdata/Q5947/sst and refreshes the
+#SBATCH --partition=general
+#SBATCH --account=a_senv_mbos
+
+# Builds or updates the archive under /QRISdata/Q5947/noaa and refreshes the
 # GBR subset. The job needs outbound FTP access to ftp.star.nesdis.noaa.gov.
-# Submit from the repository root:  sbatch B_hpc_scripts/update_archive.slurm
+# Submit from the repository root:  sbatch B_hpc/update_archive.slurm
 
 set -euo pipefail
 
@@ -21,7 +20,7 @@ set -euo pipefail
 # and checks the required packages.
 source A_scripts/environment/activate_env.sh || exit 1
 
-export CRW_ROOT=/QRISdata/Q5947/sst
+export CRW_ROOT=/QRISdata/Q5947/noaa
 CRW="python3 A_scripts/functions/crw_archive.py"
 YEARS="1985-$(date +%Y)"
 
