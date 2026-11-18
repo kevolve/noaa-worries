@@ -12,6 +12,9 @@
 # Environment variables:
 #   CRW_CONDA_ENV       environment name        (default "crw")
 #   CRW_REPO            repository root         (default: two levels above this file)
+#   CRW_CONDA_ENVS_DIR  folder holding conda environments. Default: conda's
+#                       own folder when writable, otherwise ~/.conda/envs
+#                       (the case for a conda loaded as an HPC module)
 #   CRW_SKIP_CONDA      set to 1 to leave the current environment alone,
 #                       for a manually managed setup
 #   CRW_SKIP_PKG_CHECK  set to 1 to skip the package check
@@ -152,7 +155,7 @@ crw_load_modules() {
 }
 
 crw_activate_env() {
-  local env_name here root yml conda_exe solver shell_name had_e had_u rc candidate
+  local env_name here root yml conda_exe solver shell_name had_e had_u rc candidate conda_base envs_dir
 
   env_name="${CRW_CONDA_ENV:-crw}"
 
@@ -222,6 +225,34 @@ Then open a new terminal. To manage the environment manually instead,
 set CRW_SKIP_CONDA=1.
 MSG
     return 1
+  fi
+
+  # ---- choose where environments live ------------------------------
+  # A conda provided by an HPC module has a read-only install folder, so
+  # an environment cannot be created under it. In that case (or when
+  # CRW_CONDA_ENVS_DIR is set) environments go to a user-writable folder.
+  conda_base="$("$conda_exe" info --base 2>/dev/null)"
+  envs_dir=""
+  if [ -n "${CRW_CONDA_ENVS_DIR:-}" ]; then
+    envs_dir="$CRW_CONDA_ENVS_DIR"
+  elif [ -z "${CONDA_ENVS_DIRS:-}" ] && [ -n "$conda_base" ]; then
+    if [ -d "$conda_base/envs" ]; then
+      [ -w "$conda_base/envs" ] || envs_dir="$HOME/.conda/envs"
+    else
+      [ -w "$conda_base" ] || envs_dir="$HOME/.conda/envs"
+    fi
+  fi
+  if [ -n "$envs_dir" ]; then
+    if ! mkdir -p "$envs_dir"; then
+      echo "ERROR: cannot create the conda environments folder $envs_dir." >&2
+      echo "       Set CRW_CONDA_ENVS_DIR to a writable folder." >&2
+      return 1
+    fi
+    export CONDA_ENVS_DIRS="$envs_dir"
+    if [ -z "${CONDA_PKGS_DIRS:-}" ] && [ -n "$conda_base" ] && [ ! -w "$conda_base/pkgs" ]; then
+      export CONDA_PKGS_DIRS="$(dirname "$envs_dir")/pkgs"
+    fi
+    echo "conda environments folder: $envs_dir"
   fi
 
   # ---- create the environment if it does not exist ------------------

@@ -46,6 +46,7 @@ Cell centres: `lon = -179.975 + 0.05 * ix`, `lat = 89.975 - 0.05 * iy`, where `i
 2. Activate the environment: `source A_scripts/environment/activate_env.sh`. This:
    - on the HPC (where environment modules exist) runs `module purge`, then loads `miniforge/25.3.0-3` and `r/4.4.0-gfbf-2023a`; other module names can be set with `CRW_CONDA_MODULE` and `CRW_R_MODULE`;
    - creates a conda environment named `crw` from `environment.yml` on first use (Python with numpy, netCDF4 and pyarrow), then activates it;
+   - places the environment in `~/.conda/envs` when conda's own folder is read-only (as with an HPC module); `CRW_CONDA_ENVS_DIR` sets another location;
    - checks the required packages and prints the install command for any that are missing.
 3. Set the data root. The first existing path under `roots` in `A_scripts/functions/crw_config.json` is used (`/QRISdata/Q5947/sst` on the HPC, `/Users/uqkbairo/MODRRAP/sst` locally). Override with the `CRW_ROOT` environment variable or `--root`.
 4. Check the environment and server: `python3 A_scripts/functions/crw_archive.py check --network`
