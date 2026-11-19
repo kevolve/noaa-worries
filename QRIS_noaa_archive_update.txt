@@ -1,0 +1,26 @@
+# Code to run on HPC to update archive:
+
+cd /scratch/user/uqkbairo/scratch150gb/noaa-worries
+CRW="python3 A_scripts/functions/crw_archive.py" 
+# Archive located at: '/QRISdata/Q5947/noaa'
+
+# LOAD ENVIRONMENT: 
+source A_scripts/environment/activate_env.sh
+
+# TO CHECK STATUS:
+$CRW status # takes a few minutes to read online
+
+# TO UPDATE ARCHIVE:
+$CRW update --product sst dhw --timeframe daily monthly annual --dry-run # to test
+sbatch B_hpc_scripts/update_archive.slurm # to update and build GBR subset
+
+
+
+# TO DOWNLOAD:
+rsync -av uqkbairo@bunya.rcc.uq.edu.au:/QRISdata/Q5947/noaa/regions/ /Users/uqkbairo/MODRRAP/sst/regions/
+rsync -av uqkbairo@bunya.rcc.uq.edu.au:/QRISdata/Q5947/noaa/climatology/ /Users/uqkbairo/MODRRAP/sst/climatology/
+
+
+
+
+
