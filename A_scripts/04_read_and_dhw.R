@@ -6,7 +6,7 @@ library(ggplot2)
 invisible(lapply(list.files("A_scripts/functions", pattern = "\\.R$", full.names = TRUE), source))
 
 #### Reef coordinates ####
-reefs <- read.csv("C_gbr_data/gbr_reefs.csv")
+reefs <- read.csv("C_gbr/gbr_reefs.csv")
 moore <- reefs %>% filter(gbr_name == "Moore Reef") %>% slice(1)
 
 #### Annual mean SST at one reef ####

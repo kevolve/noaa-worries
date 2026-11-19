@@ -7,7 +7,7 @@ library(dplyr)
 invisible(lapply(list.files("A_scripts/functions", pattern = "\\.R$", full.names = TRUE), source))
 
 # Optional overrides (otherwise taken from A_scripts/functions/crw_config.json):
-# options(crw.root = "/QRISdata/Q5947/sst")
+# options(crw.root = "/QRISdata/Q5947/noaa")
 # options(crw.python = "/path/to/python3")
 
 crw_root()

@@ -105,10 +105,17 @@ def resolve_root(cfg, root=None):
         return Path(root)
     if os.environ.get("CRW_ROOT"):
         return Path(os.environ["CRW_ROOT"])
+    tried = []
     for name, p in cfg.get("roots", {}).items():
-        if Path(p).is_dir():
-            return Path(p)
-    sys.exit("No data root found. Use --root, set CRW_ROOT, or edit 'roots' in "
+        try:
+            if Path(p).is_dir():
+                return Path(p)
+            parent = next((str(a) for a in Path(p).parents if a.exists()), "/")
+            tried.append(f"  {name:6} {p}  (not found; nearest existing folder: {parent})")
+        except OSError as e:
+            tried.append(f"  {name:6} {p}  ({e.strerror})")
+    sys.exit("No data root found. Roots checked:\n" + "\n".join(tried) +
+             "\nUse --root, set CRW_ROOT, or edit 'roots' in "
              f"{DEFAULT_CONFIG}.")
 
 

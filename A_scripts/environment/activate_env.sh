@@ -3,7 +3,7 @@
 # creating it from environment.yml on first use.
 #
 # This file is SOURCED, not executed - activation has to happen in the
-# calling shell. B_hpc_scripts/update_archive.slurm sources it
+# calling shell. B_hpc/update_archive.slurm sources it
 # automatically; source it by hand before running a command:
 #
 #   source A_scripts/environment/activate_env.sh

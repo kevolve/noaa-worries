@@ -8,7 +8,7 @@ __pycache__/
 *.log
 MODRRAP
 inst/
-# Large local data; only C_gbr_data/gbr_reefs.csv is tracked
+# Large local data; only C_gbr/gbr_reefs.csv is tracked
 C_gbr/sst/
 C_gbr/climatology/
 C_gbr/gbr_reef_coords/

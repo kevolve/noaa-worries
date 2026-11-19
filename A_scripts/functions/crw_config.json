@@ -1,7 +1,7 @@
 {
   "roots": {
-    "hpc": "/QRISdata/Q5947/sst",
-    "local": "/Users/uqkbairo/MODRRAP/sst"
+    "hpc": "/QRISdata/Q5947/noaa",
+    "local": "/Users/uqkbairo/MODRRAP/noaa"
   },
   "server": {
     "host": "ftp.star.nesdis.noaa.gov",

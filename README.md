@@ -48,7 +48,7 @@ Cell centres: `lon = -179.975 + 0.05 * ix`, `lat = 89.975 - 0.05 * iy`, where `i
    - creates a conda environment named `crw` from `environment.yml` on first use (Python with numpy, netCDF4 and pyarrow), then activates it;
    - places the environment in `~/.conda/envs` when conda's own folder is read-only (as with an HPC module); `CRW_CONDA_ENVS_DIR` sets another location;
    - checks the required packages and prints the install command for any that are missing.
-3. Set the data root. The first existing path under `roots` in `A_scripts/functions/crw_config.json` is used (`/QRISdata/Q5947/sst` on the HPC, `/Users/uqkbairo/MODRRAP/sst` locally). Override with the `CRW_ROOT` environment variable or `--root`.
+3. Set the data root. The first existing path under `roots` in `A_scripts/functions/crw_config.json` is used (`/QRISdata/Q5947/noaa` on the HPC, `/Users/uqkbairo/MODRRAP/noaa` locally). Override with the `CRW_ROOT` environment variable or `--root`.
 4. Check the environment and server: `python3 A_scripts/functions/crw_archive.py check --network`
 
 R packages are installed once into the R library in use: `install.packages(c("arrow", "dplyr", "jsonlite", "tibble", "ggplot2"))`.
@@ -66,7 +66,7 @@ $CRW extract --region gbr --product sst dhw --timeframe daily monthly annual
 $CRW status
 ```
 
-`update` compares the NOAA server listing with the archive and fetches only missing files, so the same command builds the archive the first time and keeps it current afterwards. `--dry-run` lists what would be fetched. On an HPC, submit `B_hpc_scripts/update_archive.slurm` after adding the cluster's account and partition lines; the job activates the conda environment itself.
+`update` compares the NOAA server listing with the archive and fetches only missing files, so the same command builds the archive the first time and keeps it current afterwards. `--dry-run` lists what would be fetched. On an HPC, submit `B_hpc/update_archive.slurm` after adding the cluster's account and partition lines; the job activates the conda environment itself.
 
 The same steps are available from R: see `A_scripts/01_check_environment.R` to `A_scripts/04_read_and_dhw.R`.
 
@@ -105,8 +105,8 @@ Sources: [CRW 5 km methodology](https://coralreefwatch.noaa.gov/product/5km/meth
 | `A_scripts/environment/` | `activate_env.sh`, sourced to create/activate the conda environment |
 | `A_scripts/legacy/` | superseded scripts |
 | `environment.yml` | conda environment definition |
-| `B_hpc_scripts/` | SLURM job template |
-| `C_gbr_data/` | GBR reef coordinates with matching `cell_id` (`gbr_reefs.csv`); larger local files are not tracked |
+| `B_hpc/` | SLURM job template |
+| `C_gbr/` | GBR reef coordinates with matching `cell_id` (`gbr_reefs.csv`); larger local files are not tracked |
 | `D_plots/` | figures |
 
 All commands and scripts are run from the repository root.

@@ -15,7 +15,7 @@ crw_update(timeframe = "climatology")
 # Annual and monthly summaries, all years:
 crw_update(product = c("sst", "dhw"), timeframe = c("annual", "monthly"))
 
-# Daily SST and DHW, all years (large: use the HPC job in B_hpc_scripts/ for the
+# Daily SST and DHW, all years (large: use the HPC job in B_hpc/ for the
 # first build, then this call for routine updates):
 crw_update(product = c("sst", "dhw"), timeframe = "daily", workers = 4)
 
